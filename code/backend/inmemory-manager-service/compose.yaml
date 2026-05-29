@@ -2,5 +2,7 @@ version: '3'
 services:
   inmemory-manager-service-backend:
     build: .
-    ports:
-      - "8080:8080"
+    container_name: inmemory-manager-service-backend
+networks:
+  default:
+    name: docker_network
