@@ -6,8 +6,14 @@ server:
 spring:
   application:
     name: inmemory-manager-service
+  config:
+    import: "optional:nacos:inmemory-manager-service.yml"
   cloud:
     nacos:
+      server-addr: ${NACOS_SERVER:http://localhost:8848}
+      username: ${NACOS_USERNAME:}
+      password: ${NACOS_PASSWORD:}
+      namespace: ${NACOS_NAMESPACE:}
       config:
         enabled: ${NACOS_CONFIG_ENABLED:false}
         server-addr: ${NACOS_CONFIG_SERVER:${NACOS_SERVER:http://localhost:8848}}
