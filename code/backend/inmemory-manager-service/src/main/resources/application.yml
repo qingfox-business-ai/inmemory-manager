@@ -1,15 +1,22 @@
 server:
   port: 8080
+  servlet:
+    context-path: /inmemory-manager/inmemory-manager-service
 
 spring:
   application:
     name: inmemory-manager-service
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
+  config:
+    import: optional:nacos:
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 10.126.126.2:8848
+        namespace: public
+      config:
+        server-addr: 10.126.126.2:8848
+        namespace: public
+        file-extension: yml
 
 springdoc:
   api-docs:

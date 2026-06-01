@@ -1,8 +1,12 @@
 version: '3'
 services:
-  inmemory-manager-service-backend:
+  inmemory-manager-inmemory-manager-service-backend:
+    image: 10.126.126.2:50102/inmemory-manager/inmemory-manager-service
     build: .
-    container_name: inmemory-manager-service-backend
+    container_name: inmemory-manager-inmemory-manager-service-backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.inmemory-manager-inmemory-manager-service-secure.rule=Host(`10.126.126.2`) && PathPrefix(`/inmemory-manager/inmemory-manager-service`)"
 networks:
   default:
     name: docker_network
