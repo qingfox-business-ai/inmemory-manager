@@ -1,0 +1,19 @@
+const BASE_URL = '/inmemory-manager/inmemory-manager-service/api'
+
+export const API_URLS = {
+  dashboard: {
+    summary: `${BASE_URL}/dashboard/summary`
+  },
+  client: {
+    list: `${BASE_URL}/client/list`
+  },
+  message: {
+    list: `${BASE_URL}/message/list`,
+    config: (messageId) => `${BASE_URL}/message/${messageId}/config`,
+    data: (messageId) => `${BASE_URL}/message/${messageId}/data`
+  },
+  task: {
+    list: `${BASE_URL}/task/list`,
+    monitor: (taskId) => `${BASE_URL}/task/${taskId}/monitor`
+  }
+}
