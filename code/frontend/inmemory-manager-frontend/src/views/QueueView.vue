@@ -18,7 +18,7 @@
         </div>
       </template>
 
-      <el-table :data="filteredData" style="width: 100%" max-height="600">
+      <el-table :data="filteredData" v-loading="loading" style="width: 100%" max-height="600">
         <el-table-column prop="messageId" label="消息ID" min-width="140" />
         <el-table-column prop="taskId" label="任务ID" min-width="120" />
         <el-table-column prop="batchId" label="批次ID" min-width="120" />
@@ -61,8 +61,10 @@ const dataDialogVisible = ref(false)
 const configContent = ref('')
 const dataContent = ref('')
 const tableData = ref([])
+const loading = ref(false)
 
 const fetchData = async () => {
+  loading.value = true
   try {
     const res = await getMessageList()
     if (res.code === 200 && res.data) {
@@ -70,6 +72,8 @@ const fetchData = async () => {
     }
   } catch (e) {
     console.error('获取消息数据失败', e)
+  } finally {
+    loading.value = false
   }
 }
 

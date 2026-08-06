@@ -1,5 +1,5 @@
 <template>
-  <div class="dashboard-container">
+  <div class="dashboard-container" v-loading="loading">
     <!-- 客户端统计 -->
     <div class="section">
       <div class="section-title">客户端统计（实时）</div>
@@ -115,11 +115,13 @@ import { ref, onMounted } from 'vue'
 import { getDashboardSummary } from '@/api'
 
 const fetchError = ref(false)
+const loading = ref(false)
 const clientData = ref({ connected: 0, disconnected: 0 })
 const queueData = ref({ completed: 0, pending: 0, deadLetter: 0 })
 const taskData = ref({ success: 0, failed: 0, periodStart: '', periodEnd: '' })
 
 const fetchSummary = async () => {
+  loading.value = true
   fetchError.value = false
   try {
     const res = await getDashboardSummary()
@@ -133,6 +135,8 @@ const fetchSummary = async () => {
   } catch (e) {
     fetchError.value = true
     console.error('获取首页数据失败', e)
+  } finally {
+    loading.value = false
   }
 }
 

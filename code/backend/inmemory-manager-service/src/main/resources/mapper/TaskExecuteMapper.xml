@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.qingfox.inmemory.manager.mapper.TaskExecuteMapper">
+
+    <select id="selectExecutesByTaskId" resultType="com.qingfox.inmemory.manager.entity.TaskExecute">
+        SELECT id, task_id, batch_id, execute_id, execute_type,
+               run_count, error_count, in_count, out_count, duration,
+               error_stack, create_time, update_time
+        FROM bill.inmemory_task_execute
+        WHERE task_id = #{taskId}
+        ORDER BY create_time ASC
+    </select>
+
+</mapper>

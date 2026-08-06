@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.qingfox.inmemory.manager.mapper.TaskBatchMapper">
+
+    <select id="selectTaskSummary" resultType="java.util.Map">
+        SELECT
+            task_id AS "taskId",
+            COUNT(*) AS "totalBatch",
+            COUNT(CASE WHEN status = 2 THEN 1 END) AS "completedBatch",
+            MIN(start_time) AS "startTime",
+            MAX(end_time) AS "endTime"
+        FROM bill.inmemory_task_batch
+        <where>
+            <if test="taskId != null and taskId != ''">
+                AND task_id = #{taskId}
+            </if>
+        </where>
+        GROUP BY task_id
+        ORDER BY MIN(start_time) DESC
+    </select>
+
+    <select id="selectBatchesByTaskId" resultType="com.qingfox.inmemory.manager.entity.TaskBatch">
+        SELECT id, task_id, batch_id, start_time, end_time, status, error_stack, resolver_id, sub_resolver_id
+        FROM bill.inmemory_task_batch
+        WHERE task_id = #{taskId}
+        ORDER BY start_time ASC
+    </select>
+
+    <select id="selectDatabaseNow" resultType="java.time.LocalDateTime">
+        SELECT now()::timestamp without time zone
+    </select>
+
+</mapper>

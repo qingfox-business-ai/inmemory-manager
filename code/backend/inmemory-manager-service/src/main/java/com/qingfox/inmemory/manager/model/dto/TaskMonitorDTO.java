@@ -14,5 +14,6 @@ import java.util.List;
 public class TaskMonitorDTO {
 
     private String taskId;
-    private List<TaskBatchDTO> batches;
+    private TaskStatisticsDTO statistics;
+    private List<ExecuteStatisticsDTO> executes;
 }

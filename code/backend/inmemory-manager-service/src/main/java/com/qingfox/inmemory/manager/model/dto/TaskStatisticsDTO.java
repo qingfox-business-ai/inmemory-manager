@@ -5,16 +5,21 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TaskDTO {
+public class TaskStatisticsDTO {
 
-    private String taskId;
-    private int completedBatch;
-    private int totalBatch;
-    private String status;
+    private int allCount;
+    private int doneCount;
+    private int runningCount;
+    private int errorCount;
+    private int status;
     private String startTime;
     private String endTime;
+    private String nowTime;
+    private List<String> errorStack;
 }

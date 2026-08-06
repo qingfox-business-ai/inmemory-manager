@@ -26,7 +26,7 @@
         </div>
       </template>
 
-      <el-table :data="filteredData" style="width: 100%" max-height="600">
+      <el-table :data="filteredData" v-loading="loading" style="width: 100%" max-height="600">
         <el-table-column prop="taskId" label="任务ID" min-width="140" />
         <el-table-column label="批次" width="120" align="center">
           <template #default="{ row }">
@@ -50,26 +50,207 @@
       </el-table>
     </el-card>
 
-    <el-dialog v-model="monitorDialogVisible" :title="`监控任务 - ${currentTaskId}`" width="700px">
-      <pre class="json-content">{{ monitorContent }}</pre>
+    <el-dialog v-model="monitorDialogVisible" :title="`监控任务 - ${currentTaskId}`" width="1100px" top="5vh" @close="handleMonitorClose">
+      <div v-loading="monitorLoading">
+        <!-- 概览区 -->
+        <div v-if="monitorData" class="overview-section">
+          <el-descriptions :column="3" border size="small">
+            <el-descriptions-item label="状态">
+              <el-tag :type="monitorData.statistics.status === 1 ? 'warning' : 'success'" effect="light">
+                {{ monitorData.statistics.status === 1 ? '进行中' : '已完成' }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="数据库时间">{{ monitorData.statistics.nowTime }}</el-descriptions-item>
+            <el-descriptions-item label="异常批次">{{ monitorData.statistics.errorCount }}</el-descriptions-item>
+            <el-descriptions-item label="开始时间">{{ monitorData.statistics.startTime }}</el-descriptions-item>
+            <el-descriptions-item label="结束时间">{{ monitorData.statistics.endTime || '-' }}</el-descriptions-item>
+            <el-descriptions-item label=""></el-descriptions-item>
+          </el-descriptions>
+
+          <el-row :gutter="16" style="margin-top: 12px;">
+            <el-col :span="6">
+              <div class="stat-card">
+                <div class="stat-value">{{ monitorData.statistics.allCount }}</div>
+                <div class="stat-label">总批次</div>
+              </div>
+            </el-col>
+            <el-col :span="6">
+              <div class="stat-card">
+                <div class="stat-value stat-success">{{ monitorData.statistics.doneCount }}</div>
+                <div class="stat-label">已完成</div>
+              </div>
+            </el-col>
+            <el-col :span="6">
+              <div class="stat-card">
+                <div class="stat-value stat-warning">{{ monitorData.statistics.runningCount }}</div>
+                <div class="stat-label">进行中</div>
+              </div>
+            </el-col>
+            <el-col :span="6">
+              <div class="stat-card">
+                <div class="stat-value stat-danger">{{ monitorData.statistics.errorCount }}</div>
+                <div class="stat-label">异常</div>
+              </div>
+            </el-col>
+          </el-row>
+        </div>
+
+        <!-- 执行器统计 -->
+        <div v-if="monitorData && monitorData.executes && monitorData.executes.length" class="section-title">
+          执行器统计
+        </div>
+        <el-table
+          v-if="monitorData && monitorData.executes && monitorData.executes.length"
+          :data="monitorData.executes"
+          style="width: 100%"
+          size="small"
+          max-height="300"
+          :row-class-name="executeRowClass"
+        >
+          <el-table-column prop="executeId" label="执行器ID" min-width="200" />
+          <el-table-column prop="executeType" label="类型" width="90" align="center">
+            <template #default="{ row }">
+              <el-tag size="small" :type="row.executeType === 'RESOLVER' ? 'primary' : 'info'">
+                {{ row.executeType === 'RESOLVER' ? '解析器' : '执行器' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="runCount" label="执行次数" width="90" align="center" />
+          <el-table-column prop="inCount" label="输入总数" width="90" align="center" />
+          <el-table-column prop="outCount" label="输出总数" width="90" align="center" />
+          <el-table-column prop="duration" label="总耗时(ms)" width="110" align="center" />
+          <el-table-column prop="avgIn" label="平均输入" width="90" align="center" />
+          <el-table-column prop="avgOut" label="平均输出" width="90" align="center" />
+          <el-table-column prop="outPerSecond" label="输出/秒" width="90" align="center" />
+          <el-table-column prop="updateTime" label="更新时间" width="160" align="center" />
+          <el-table-column prop="errorCount" label="异常" width="80" align="center">
+            <template #default="{ row }">
+              <el-badge v-if="row.errorCount > 0" :value="row.errorCount" type="danger">
+                <span class="error-text">{{ row.errorCount }}</span>
+              </el-badge>
+              <span v-else>0</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="100" align="center">
+            <template #default="{ row }">
+              <el-button
+                v-if="row.errorCount > 0"
+                size="small"
+                type="danger"
+                link
+                @click="viewExecuteErrors(row)"
+              >查看异常</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <!-- 异常信息区 -->
+        <div v-if="monitorData" class="section-title">
+          异常信息
+        </div>
+        <el-tabs v-if="monitorData" v-model="errorTab" class="error-tabs">
+          <el-tab-pane label="批次异常" name="batch">
+            <div v-if="monitorData.statistics.errorStack && monitorData.statistics.errorStack.length" class="error-list">
+              <el-card
+                v-for="(err, idx) in monitorData.statistics.errorStack"
+                :key="'batch-' + idx"
+                class="error-card"
+                shadow="never"
+              >
+                <div class="error-header" @click="toggleError('batch-' + idx)">
+                  <span class="error-icon">🔴</span>
+                  <span class="error-title-text">{{ err.substring(0, 100) }}{{ err.length > 100 ? '...' : '' }}</span>
+                  <span class="error-expand">{{ expandedErrors['batch-' + idx] ? '收起' : '展开' }}</span>
+                </div>
+                <div v-if="expandedErrors['batch-' + idx]" class="error-detail">{{ err }}</div>
+              </el-card>
+            </div>
+            <el-empty v-else description="无批次异常" :image-size="60" />
+          </el-tab-pane>
+
+          <el-tab-pane label="执行器异常" name="execute">
+            <div v-if="executeErrors.length" class="error-list">
+              <el-card
+                v-for="(err, idx) in executeErrors"
+                :key="'exec-' + idx"
+                class="error-card"
+                shadow="never"
+              >
+                <div class="error-header" @click="toggleError('exec-' + idx)">
+                  <span class="error-icon">🔴</span>
+                  <span class="error-title-text">{{ err.substring(0, 100) }}{{ err.length > 100 ? '...' : '' }}</span>
+                  <span class="error-expand">{{ expandedErrors['exec-' + idx] ? '收起' : '展开' }}</span>
+                </div>
+                <div v-if="expandedErrors['exec-' + idx]" class="error-detail">{{ err }}</div>
+              </el-card>
+            </div>
+            <el-empty v-else description="无执行器异常" :image-size="60" />
+          </el-tab-pane>
+        </el-tabs>
+      </div>
+
+      <template #footer>
+        <el-button @click="monitorDialogVisible = false">关闭</el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import { getTaskList, getTaskMonitor } from '@/api'
+
+const MONITOR_POLL_INTERVAL = 10000
 
 const statusFilter = ref('')
 const taskIdFilter = ref('')
 const timeRange = ref([])
 const monitorDialogVisible = ref(false)
 const currentTaskId = ref('')
-const monitorContent = ref('')
+const monitorData = ref(null)
+const monitorLoading = ref(false)
 const tableData = ref([])
+const loading = ref(false)
+const errorTab = ref('batch')
+const expandedErrors = reactive({})
+let monitorTimer = null
+
+const clearMonitorTimer = () => {
+  if (monitorTimer) {
+    clearInterval(monitorTimer)
+    monitorTimer = null
+  }
+}
+
+const isRunning = () => {
+  return monitorData.value && monitorData.value.statistics && monitorData.value.statistics.status === 1
+}
+
+const fetchMonitorSilent = async () => {
+  if (!currentTaskId.value) return
+  try {
+    const res = await getTaskMonitor(currentTaskId.value)
+    if (res.code === 200 && res.data) {
+      monitorData.value = res.data
+      if (!isRunning()) {
+        clearMonitorTimer()
+      }
+    }
+  } catch (e) {
+    console.error('监控数据轮询失败', e)
+  }
+}
+
+const startMonitorTimer = () => {
+  clearMonitorTimer()
+  if (isRunning()) {
+    monitorTimer = setInterval(fetchMonitorSilent, MONITOR_POLL_INTERVAL)
+  }
+}
 
 const fetchData = async () => {
+  loading.value = true
   try {
     const params = {}
     if (statusFilter.value) params.status = statusFilter.value
@@ -84,6 +265,8 @@ const fetchData = async () => {
     }
   } catch (e) {
     console.error('获取任务数据失败', e)
+  } finally {
+    loading.value = false
   }
 }
 
@@ -101,19 +284,56 @@ const statusTagType = (status) => {
 }
 
 const statusLabel = (status) => {
-  const map = { success: '✓ 成功', running: '⏳ 执行中', failed: '✗ 异常' }
+  const map = { success: '成功', running: '执行中', failed: '异常' }
   return map[status] || status
 }
 
+const executeErrors = computed(() => {
+  if (!monitorData.value || !monitorData.value.executes) return []
+  const errors = []
+  for (const exec of monitorData.value.executes) {
+    if (exec.errorStack && exec.errorStack.length) {
+      errors.push(...exec.errorStack)
+    }
+  }
+  return errors
+})
+
+const executeRowClass = ({ row }) => {
+  if (row.errorCount > 0) return 'error-row'
+  return ''
+}
+
+const toggleError = (key) => {
+  expandedErrors[key] = !expandedErrors[key]
+}
+
+const viewExecuteErrors = (row) => {
+  errorTab.value = 'execute'
+}
+
 const handleMonitor = async (row) => {
+  clearMonitorTimer()
   currentTaskId.value = row.taskId
+  monitorDialogVisible.value = true
+  monitorLoading.value = true
+  monitorData.value = null
+  Object.keys(expandedErrors).forEach(k => delete expandedErrors[k])
   try {
     const res = await getTaskMonitor(row.taskId)
-    monitorContent.value = JSON.stringify(res.data, null, 2)
+    if (res.code === 200) {
+      monitorData.value = res.data
+      startMonitorTimer()
+    }
   } catch (e) {
-    monitorContent.value = JSON.stringify(row.detail || {}, null, 2)
+    console.error('获取监控数据失败', e)
+  } finally {
+    monitorLoading.value = false
   }
-  monitorDialogVisible.value = true
+}
+
+const handleMonitorClose = () => {
+  clearMonitorTimer()
 }
 
 const handleRefresh = () => {
@@ -122,6 +342,10 @@ const handleRefresh = () => {
 
 onMounted(() => {
   fetchData()
+})
+
+onBeforeUnmount(() => {
+  clearMonitorTimer()
 })
 </script>
 
@@ -142,17 +366,102 @@ onMounted(() => {
   gap: 4px;
 }
 
-.json-content {
-  background-color: #f5f7fa;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  padding: 16px;
+.overview-section {
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  text-align: center;
+  padding: 16px 0;
+  background: #f5f7fa;
+  border-radius: 6px;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.stat-success { color: #67c23a; }
+.stat-warning { color: #e6a23c; }
+.stat-danger { color: #f56c6c; }
+
+.stat-label {
   font-size: 13px;
-  line-height: 1.6;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #303133;
+  margin: 20px 0 12px 0;
+  padding-left: 8px;
+  border-left: 3px solid #409eff;
+}
+
+.error-text {
+  color: #f56c6c;
+}
+
+.error-row {
+  background-color: #fef0f0 !important;
+}
+
+.error-tabs {
+  height: 320px;
+  overflow-y: auto;
+}
+
+.error-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.error-card {
+  border-left: 3px solid #f56c6c !important;
+}
+
+.error-header {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  gap: 8px;
+}
+
+.error-icon {
+  font-size: 12px;
+}
+
+.error-title-text {
+  flex: 1;
+  font-size: 13px;
+  color: #606266;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.error-expand {
+  font-size: 12px;
+  color: #409eff;
+  white-space: nowrap;
+}
+
+.error-detail {
+  margin-top: 8px;
+  padding: 12px;
+  background: #fdf6f6;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.8;
   color: #303133;
   white-space: pre-wrap;
   word-break: break-all;
-  max-height: 400px;
+  max-height: 300px;
   overflow-y: auto;
 }
 </style>

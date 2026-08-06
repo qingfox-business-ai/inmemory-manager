@@ -17,7 +17,7 @@
         </div>
       </template>
 
-      <el-table :data="filteredData" style="width: 100%" max-height="600">
+      <el-table :data="filteredData" v-loading="loading" style="width: 100%" max-height="600">
         <el-table-column type="index" label="排序" width="80" align="center" />
         <el-table-column prop="clientId" label="客户端ID" min-width="140" />
         <el-table-column prop="address" label="客户端地址" min-width="140" />
@@ -43,8 +43,10 @@ import { getClientList } from '@/api'
 const statusFilter = ref('')
 const searchKeyword = ref('')
 const tableData = ref([])
+const loading = ref(false)
 
 const fetchData = async () => {
+  loading.value = true
   try {
     const res = await getClientList()
     if (res.code === 200 && res.data) {
@@ -52,6 +54,8 @@ const fetchData = async () => {
     }
   } catch (e) {
     console.error('获取客户端数据失败', e)
+  } finally {
+    loading.value = false
   }
 }
 

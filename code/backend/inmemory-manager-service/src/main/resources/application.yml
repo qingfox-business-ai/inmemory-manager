@@ -7,7 +7,7 @@ spring:
   application:
     name: inmemory-manager-service
   config:
-    import: "optional:nacos:inmemory-manager-service.yml"
+    import: "optional:nacos:inmemory-manager-service.yaml"
   cloud:
     nacos:
       server-addr: ${NACOS_SERVER:http://localhost:8848}

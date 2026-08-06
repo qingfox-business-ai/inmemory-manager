@@ -1,12 +1,12 @@
 version: '3'
 services:
   inmemory-manager-inmemory-manager-service-backend:
-    image: 10.126.126.2:50102/inmemory-manager/inmemory-manager-service
+    image: ubuntu-pc:50102/inmemory-manager/inmemory-manager-service
     build: .
     container_name: inmemory-manager-inmemory-manager-service-backend
     environment:
       - NACOS_CONFIG_ENABLED=true
-      - NACOS_SERVER=http://10.126.126.2:58848
+      - NACOS_SERVER=http://ubuntu-pc:58848
       - NACOS_GROUP=DEFAULT_GROUP
       - NACOS_NAMESPACE=local
       - NACOS_CLUSTER_NAME=
@@ -15,7 +15,7 @@ services:
       - NACOS_PASSWORD=nacos
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.inmemory-manager-inmemory-manager-service-secure.rule=Host(`10.126.126.2`) && PathPrefix(`/inmemory-manager/inmemory-manager-service`)"
+      - "traefik.http.routers.inmemory-manager-inmemory-manager-service-secure.rule=Host(`ubuntu-pc`) && PathPrefix(`/inmemory-manager/inmemory-manager-service`)"
 networks:
   default:
     name: docker_network
