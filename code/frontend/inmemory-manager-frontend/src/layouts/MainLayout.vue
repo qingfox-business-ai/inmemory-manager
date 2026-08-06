@@ -2,7 +2,7 @@
   <el-container class="layout-container">
     <el-aside :width="isCollapse ? '64px' : '210px'" class="aside">
       <div class="logo">
-        <span v-if="!isCollapse">Inmemory Manager</span>
+        <span v-if="!isCollapse">缓存管理</span>
         <span v-else>IM</span>
       </div>
       <el-menu
