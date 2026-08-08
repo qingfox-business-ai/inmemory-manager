@@ -5,11 +5,7 @@ import com.qingfox.inmemory.manager.model.dto.TaskDTO;
 import com.qingfox.inmemory.manager.model.dto.TaskMonitorDTO;
 import com.qingfox.inmemory.manager.service.TaskMonitorService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -26,8 +22,7 @@ public class TaskController {
             @RequestParam(value = "taskId", required = false) String taskId,
             @RequestParam(value = "startTime", required = false) String startTime,
             @RequestParam(value = "endTime", required = false) String endTime) {
-        List<TaskDTO> list = taskMonitorService.getTaskList(taskId);
-        return ApiResponse.success(list);
+        return ApiResponse.success(taskMonitorService.getTaskList(taskId, status, startTime, endTime));
     }
 
     @GetMapping("/{taskId}/monitor")

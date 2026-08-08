@@ -18,8 +18,13 @@
       </template>
 
       <el-table :data="filteredData" v-loading="loading" style="width: 100%" max-height="600">
-        <el-table-column type="index" label="排序" width="80" align="center" />
-        <el-table-column prop="clientId" label="客户端ID" min-width="140" />
+        <el-table-column prop="consumerIndex" label="排序" width="80" align="center" />
+        <el-table-column label="客户端ID" min-width="220">
+          <template #default="{ row }">
+            {{ row.clientId }}
+            <el-tag v-if="row.leader" type="warning" size="small" style="margin-left: 8px;">Leader</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="address" label="客户端地址" min-width="140" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
@@ -28,8 +33,12 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="lastHeartbeat" label="最后一次心跳时间" min-width="180" />
-        <el-table-column prop="firstConnect" label="第一次连接时间" min-width="180" />
+        <el-table-column label="最后一次心跳时间" min-width="180">
+          <template #default="{ row }">{{ formatTime(row.lastHeartbeat) }}</template>
+        </el-table-column>
+        <el-table-column label="第一次连接时间" min-width="180">
+          <template #default="{ row }">{{ formatTime(row.firstConnect) }}</template>
+        </el-table-column>
       </el-table>
     </el-card>
   </div>
@@ -68,6 +77,13 @@ const filteredData = computed(() => {
     return matchStatus && matchSearch
   })
 })
+
+const formatTime = (ts) => {
+  if (!ts) return ''
+  const d = new Date(ts)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
 
 const handleRefresh = () => {
   fetchData()

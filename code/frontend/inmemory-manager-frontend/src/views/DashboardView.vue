@@ -96,6 +96,18 @@
         <el-col :span="8">
           <el-card shadow="hover" class="stat-card">
             <div class="stat-content">
+              <el-icon class="stat-icon warning"><Clock /></el-icon>
+              <div class="stat-body">
+                <div :class="['stat-value', fetchError ? 'na-text' : 'warning-text']">{{ fetchError ? 'N/A' : taskData.waiting }}</div>
+                <div class="stat-label">等待中的任务</div>
+                <div class="stat-unit">个</div>
+              </div>
+            </div>
+          </el-card>
+        </el-col>
+        <el-col :span="8">
+          <el-card shadow="hover" class="stat-card">
+            <div class="stat-content">
               <el-icon class="stat-icon danger"><CircleCloseFilled /></el-icon>
               <div class="stat-body">
                 <div :class="['stat-value', fetchError ? 'na-text' : 'danger-text']">{{ fetchError ? 'N/A' : taskData.failed }}</div>
@@ -118,7 +130,7 @@ const fetchError = ref(false)
 const loading = ref(false)
 const clientData = ref({ connected: 0, disconnected: 0 })
 const queueData = ref({ completed: 0, pending: 0, deadLetter: 0 })
-const taskData = ref({ success: 0, failed: 0, periodStart: '', periodEnd: '' })
+const taskData = ref({ success: 0, waiting: 0, failed: 0, periodStart: '', periodEnd: '' })
 
 const fetchSummary = async () => {
   loading.value = true

@@ -14,6 +14,8 @@ public class ClientDTO {
     private String clientId;
     private String address;
     private String status;
-    private String lastHeartbeat;
-    private String firstConnect;
+    private Long lastHeartbeat;
+    private Long firstConnect;
+    private Integer consumerIndex;
+    private Boolean leader;
 }

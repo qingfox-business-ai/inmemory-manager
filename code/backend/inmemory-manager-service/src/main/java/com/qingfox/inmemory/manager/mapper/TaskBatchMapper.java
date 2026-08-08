@@ -12,7 +12,9 @@ import java.util.Map;
 @Mapper
 public interface TaskBatchMapper extends BaseMapper<TaskBatch> {
 
-    List<Map<String, Object>> selectTaskSummary(@Param("taskId") String taskId);
+    List<Map<String, Object>> selectTaskSummary(@Param("taskId") String taskId,
+                                                @Param("startTime") String startTime,
+                                                @Param("endTime") String endTime);
 
     List<TaskBatch> selectBatchesByTaskId(@Param("taskId") String taskId);
 

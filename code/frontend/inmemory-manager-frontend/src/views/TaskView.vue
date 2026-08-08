@@ -9,6 +9,7 @@
               <el-option label="全部" value="" />
               <el-option label="成功" value="success" />
               <el-option label="执行中" value="running" />
+              <el-option label="等待中" value="waiting" />
               <el-option label="异常" value="failed" />
             </el-select>
             <el-input v-model="taskIdFilter" placeholder="任务ID" style="width: 180px; margin-left: 12px;" clearable />
@@ -22,11 +23,12 @@
               value-format="YYYY-MM-DD HH:mm"
               style="margin-left: 12px;"
             />
+            <el-button type="primary" :icon="Search" @click="fetchData" style="margin-left: 12px;">查询</el-button>
           </div>
         </div>
       </template>
 
-      <el-table :data="filteredData" v-loading="loading" style="width: 100%" max-height="600">
+      <el-table :data="tableData" v-loading="loading" style="width: 100%" max-height="600">
         <el-table-column prop="taskId" label="任务ID" min-width="140" />
         <el-table-column label="批次" width="120" align="center">
           <template #default="{ row }">
@@ -198,14 +200,21 @@
 
 <script setup>
 import { ref, computed, reactive, onMounted, onBeforeUnmount } from 'vue'
-import { Refresh } from '@element-plus/icons-vue'
+import { Refresh, Search } from '@element-plus/icons-vue'
 import { getTaskList, getTaskMonitor } from '@/api'
 
 const MONITOR_POLL_INTERVAL = 10000
 
 const statusFilter = ref('')
 const taskIdFilter = ref('')
-const timeRange = ref([])
+const defaultTimeRange = () => {
+  const end = new Date()
+  const start = new Date(end.getTime() - 2 * 24 * 60 * 60 * 1000)
+  const pad = (n) => String(n).padStart(2, '0')
+  const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return [fmt(start), fmt(end)]
+}
+const timeRange = ref(defaultTimeRange())
 const monitorDialogVisible = ref(false)
 const currentTaskId = ref('')
 const monitorData = ref(null)
@@ -270,21 +279,15 @@ const fetchData = async () => {
   }
 }
 
-const filteredData = computed(() => {
-  return tableData.value.filter(item => {
-    const matchStatus = !statusFilter.value || item.status === statusFilter.value
-    const matchTaskId = !taskIdFilter.value || item.taskId.toLowerCase().includes(taskIdFilter.value.toLowerCase())
-    return matchStatus && matchTaskId
-  })
-})
+// 任务过滤（状态/任务ID/时间范围）已改为后台交互，列表直接使用 tableData
 
 const statusTagType = (status) => {
-  const map = { success: 'success', running: 'warning', failed: 'danger' }
+  const map = { success: 'success', running: 'warning', waiting: 'info', failed: 'danger' }
   return map[status] || 'info'
 }
 
 const statusLabel = (status) => {
-  const map = { success: '成功', running: '执行中', failed: '异常' }
+  const map = { success: '成功', running: '执行中', waiting: '等待中', failed: '异常' }
   return map[status] || status
 }
 

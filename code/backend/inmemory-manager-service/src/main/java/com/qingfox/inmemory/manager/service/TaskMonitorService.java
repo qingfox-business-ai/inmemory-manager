@@ -27,24 +27,41 @@ public class TaskMonitorService {
 
     private static final int MAX_ERRORS = 50;
 
-    public List<TaskDTO> getTaskList(String taskId) {
-        List<Map<String, Object>> rows = taskBatchMapper.selectTaskSummary(taskId);
+    private static final java.time.format.DateTimeFormatter FMT = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    public List<TaskDTO> getTaskList(String taskId, String status, String startTime, String endTime) {
+        String effectiveStart = (startTime == null || startTime.isEmpty())
+                ? LocalDateTime.now().minusDays(2).format(FMT) : startTime;
+        List<Map<String, Object>> rows = taskBatchMapper.selectTaskSummary(taskId, effectiveStart, endTime);
         if (rows == null || rows.isEmpty()) {
             return Collections.emptyList();
         }
         return rows.stream().map(row -> {
             int totalBatch = toInt(row.get("totalBatch"));
             int completedBatch = toInt(row.get("completedBatch"));
-            String status = completedBatch < totalBatch ? "running" : "success";
+            int errorBatch = toInt(row.get("errorBatch"));
+            int waitingBatch = toInt(row.get("waitingBatch"));
+            String taskStatus;
+            if (errorBatch > 0) {
+                taskStatus = "failed";
+            } else if (completedBatch >= totalBatch) {
+                taskStatus = "success";
+            } else if (waitingBatch >= totalBatch) {
+                taskStatus = "waiting";
+            } else {
+                taskStatus = "running";
+            }
             return TaskDTO.builder()
                     .taskId((String) row.get("taskId"))
                     .completedBatch(completedBatch)
                     .totalBatch(totalBatch)
-                    .status(status)
+                    .status(taskStatus)
                     .startTime(formatTimestamp(row.get("startTime")))
                     .endTime(formatTimestamp(row.get("endTime")))
                     .build();
-        }).collect(Collectors.toList());
+        })
+        .filter(dto -> status == null || status.isEmpty() || status.equals(dto.getStatus()))
+        .collect(Collectors.toList());
     }
 
     public TaskMonitorDTO getTaskMonitor(String taskId) {

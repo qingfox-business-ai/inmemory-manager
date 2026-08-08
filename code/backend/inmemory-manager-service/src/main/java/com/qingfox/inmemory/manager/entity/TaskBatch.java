@@ -16,10 +16,9 @@ public class TaskBatch {
     private String batchId;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
-    private String taskType;
     private Short status;
     private String errorStack;
     private LocalDateTime updateTime;
-    private String resolverId;
-    private String subResolverId;
+    private String label;
+    private LocalDateTime createTime;
 }

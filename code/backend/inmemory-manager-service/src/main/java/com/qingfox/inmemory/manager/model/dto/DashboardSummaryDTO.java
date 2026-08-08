@@ -40,6 +40,7 @@ public class DashboardSummaryDTO {
     @AllArgsConstructor
     public static class TaskSummary {
         private int success;
+        private int waiting;
         private int failed;
         private String periodStart;
         private String periodEnd;

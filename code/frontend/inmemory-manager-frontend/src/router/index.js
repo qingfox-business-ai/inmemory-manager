@@ -30,6 +30,12 @@ const routes = [
         name: 'Task',
         component: () => import('@/views/TaskView.vue'),
         meta: { title: '任务监控', icon: 'Tickets' }
+      },
+      {
+        path: 'template',
+        name: 'Template',
+        component: () => import('@/views/TemplateView.vue'),
+        meta: { title: '模板管理', icon: 'Document' }
       }
     ]
   }

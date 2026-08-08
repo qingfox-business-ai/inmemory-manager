@@ -50,7 +50,7 @@
       - completed: int - 已完成数
       - pending: int - 待处理数
       - deadLetter: int - 死信数
-    - task: object - 任务统计
+    - task: object - 任务统计（基于任务监控数据，最近2天）
       - success: int - 成功数
       - failed: int - 失败数
       - periodStart: string - 统计周期开始时间
@@ -128,7 +128,7 @@
 
 - URL: /inmemory-manager/inmemory-manager-service/api/task/list
 - Method: GET
-- Description: 查询任务列表，支持按状态、任务ID和时间范围筛选
+- Description: 查询任务列表，默认查询最近2天，支持按状态、任务ID和时间范围（startTime/endTime 对应 start_time 范围）筛选；status 取值 success/running/failed
 - Request Parameters:
   - status: string - 任务状态（可选）
   - taskId: string - 任务ID（可选）
@@ -181,3 +181,89 @@
       - createTime: string - 创建时间
       - updateTime: string - 更新时间
       - errorStack: array - 错误堆栈信息
+
+### 模板列表
+
+- URL: /inmemory-manager/inmemory-manager-service/api/template/list
+- Method: GET
+- Description: 查询执行模板列表（按更新时间倒序）
+- Request Parameters: 无
+- Response:
+  - code: int - 响应状态码
+  - message: string - 响应消息
+  - data: array - 模板列表
+    - id: int - 模板ID
+    - templateName: string - 模板名称
+    - resolverId: string - 解析器ID
+    - subResolverId: string - 子解析器ID
+  - statisticsExecuteId: string - 统计ID
+    - createTime: string - 创建时间
+    - updateTime: string - 更新时间
+
+### 模板定制数据
+
+- URL: /inmemory-manager/inmemory-manager-service/api/template/{id}/customData
+- Method: GET
+- Description: 查询指定模板的定制数据(customData)
+- Request Parameters:
+  - id: int - 模板ID（路径参数）
+- Response:
+  - code: int - 响应状态码
+  - message: string - 响应消息
+  - data: string - 定制数据内容
+
+### 模板输入数据
+
+- URL: /inmemory-manager/inmemory-manager-service/api/template/{id}/inputData
+- Method: GET
+- Description: 查询指定模板的输入数据(inputData)
+- Request Parameters:
+  - id: int - 模板ID（路径参数）
+- Response:
+  - code: int - 响应状态码
+  - message: string - 响应消息
+  - data: string - 输入数据内容
+
+### 新增模板
+
+- URL: /inmemory-manager/inmemory-manager-service/api/template
+- Method: POST
+- Description: 新增执行模板（id 由数据库自增生成，create_time/update_time 自动写入）
+- Request Parameters（Body JSON）:
+  - templateName: string - 模板名称（必填）
+  - resolverId: string - 解析器ID
+  - subResolverId: string - 子解析器ID
+  - statisticsExecuteId: string - 统计ID
+  - customData: string - 定制数据
+  - inputData: string - 输入数据
+- Response:
+  - code: int - 响应状态码
+  - message: string - 响应消息
+
+### 修改模板
+
+- URL: /inmemory-manager/inmemory-manager-service/api/template
+- Method: PUT
+- Description: 按主键修改模板（create_time 不变，update_time 自动刷新）
+- Request Parameters（Body JSON）:
+  - id: int - 模板ID（必填）
+  - templateName: string - 模板名称
+  - resolverId: string - 解析器ID
+  - subResolverId: string - 子解析器ID
+  - statisticsExecuteId: string - 统计ID
+  - customData: string - 定制数据
+  - inputData: string - 输入数据
+- Response:
+  - code: int - 响应状态码
+  - message: string - 响应消息
+
+### 删除模板
+
+- URL: /inmemory-manager/inmemory-manager-service/api/template/{id}
+- Method: DELETE
+- Description: 按主键删除模板
+- Request Parameters:
+  - id: int - 模板ID（路径参数）
+- Response:
+  - code: int - 响应状态码
+  - message: string - 响应消息

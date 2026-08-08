@@ -15,5 +15,13 @@ export const API_URLS = {
   task: {
     list: `${BASE_URL}/task/list`,
     monitor: (taskId) => `${BASE_URL}/task/${taskId}/monitor`
+  },
+  template: {
+    list: `${BASE_URL}/template/list`,
+    customData: (id) => `${BASE_URL}/template/${id}/customData`,
+    inputData: (id) => `${BASE_URL}/template/${id}/inputData`,
+    add: `${BASE_URL}/template`,
+    update: `${BASE_URL}/template`,
+    delete: (id) => `${BASE_URL}/template/${id}`
   }
 }

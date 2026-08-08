@@ -6,9 +6,9 @@ import org.springframework.context.annotation.Configuration;
 
 @Data
 @Configuration
-@ConfigurationProperties(prefix = "inmemory.job.redis-stream")
+@ConfigurationProperties(prefix = "inmemory.job")
 public class RedisStreamProperties {
 
-    private String stream;
+    private String redisStream;
     private String consumerGroup;
 }
