@@ -5,16 +5,18 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 import java.util.Map;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class StreamMessageDTO {
+public class PageResult<T> {
 
-    private String id;
-    private Boolean ack;
-    private String status;
-    private Map<String, Object> attribute;
+    private List<T> list;
+    private long total;
+    private int page;
+    private int size;
+    private Map<String, Long> statusStats;
 }

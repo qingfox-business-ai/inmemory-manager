@@ -39,4 +39,11 @@
         SELECT now()::timestamp without time zone
     </select>
 
+    <select id="selectBatchStatusCountByTaskId" resultType="java.util.Map">
+        SELECT status AS "status", COUNT(*) AS "cnt"
+        FROM bill.inmemory_task_batch
+        WHERE task_id = #{taskId}
+        GROUP BY status
+    </select>
+
 </mapper>

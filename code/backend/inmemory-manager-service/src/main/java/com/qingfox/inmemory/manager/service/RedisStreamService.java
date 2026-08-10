@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qingfox.inmemory.manager.config.RedisStreamProperties;
 import com.qingfox.inmemory.manager.model.dto.ClientDTO;
 import com.qingfox.inmemory.manager.model.dto.StreamInfoDTO;
+import com.qingfox.inmemory.manager.model.dto.PageResult;
 import com.qingfox.inmemory.manager.model.dto.StreamMessageDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,44 +40,71 @@ public class RedisStreamService {
 
     @Scheduled(fixedRate = 10000)
     public void pollStream() {
-        String stream = properties.getRedisStream();
-        String group = properties.getConsumerGroup();
         try {
-            var records = redisTemplate.opsForStream().range(stream, Range.unbounded());
-            if (records == null || records.isEmpty()) {
-                streamMessages = Collections.emptyList();
-                return;
-            }
-            Set<String> pendingIds = new HashSet<>();
-            try {
-                PendingMessages pending = redisTemplate.opsForStream()
-                        .pending(stream, group, Range.unbounded(), (long) records.size());
-                if (pending != null) {
-                    for (PendingMessage pm : pending) {
-                        pendingIds.add(pm.getId().getValue());
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("pending query failed: {}", e.getMessage());
-            }
-            List<StreamMessageDTO> result = new ArrayList<>();
-            for (var r : records) {
-                String id = r.getId().getValue();
-                var value = r.getValue();
-                Object attrRaw = value.get("attribute");
-                Map<String, Object> attr = parseAttribute(attrRaw);
-                boolean ack = !pendingIds.contains(id);
-                result.add(StreamMessageDTO.builder()
-                        .id(id)
-                        .ack(ack)
-                        .attribute(attr)
-                        .build());
-            }
+            List<StreamMessageDTO> main = pollMain();
+            List<StreamMessageDTO> dlq = pollDlq();
+            List<StreamMessageDTO> result = new ArrayList<>(main.size() + dlq.size());
+            result.addAll(main);
+            result.addAll(dlq);
             streamMessages = result;
-            log.info("polled {} stream messages", result.size());
+            log.info("polled stream messages: main={}, dlq={}", main.size(), dlq.size());
         } catch (Exception e) {
             log.error("poll stream failed", e);
         }
+    }
+
+    private List<StreamMessageDTO> pollMain() {
+        String stream = properties.getRedisStream();
+        String group = properties.getConsumerGroup();
+        var records = redisTemplate.opsForStream().range(stream, Range.unbounded());
+        if (records == null || records.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Set<String> pendingIds = new HashSet<>();
+        try {
+            PendingMessages pending = redisTemplate.opsForStream()
+                    .pending(stream, group, Range.unbounded(), (long) records.size());
+            if (pending != null) {
+                for (PendingMessage pm : pending) {
+                    pendingIds.add(pm.getId().getValue());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("main pending query failed: {}", e.getMessage());
+        }
+        List<StreamMessageDTO> result = new ArrayList<>();
+        for (var r : records) {
+            String id = r.getId().getValue();
+            var value = r.getValue();
+            boolean ack = !pendingIds.contains(id);
+            result.add(StreamMessageDTO.builder()
+                    .id(id)
+                    .ack(ack)
+                    .status(ack ? "done" : "pending")
+                    .attribute(parseAttribute(value.get("attribute")))
+                    .build());
+        }
+        return result;
+    }
+
+    private List<StreamMessageDTO> pollDlq() {
+        String stream = properties.getRedisStream() + "-DLQ";
+        var records = redisTemplate.opsForStream().range(stream, Range.unbounded());
+        if (records == null || records.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<StreamMessageDTO> result = new ArrayList<>();
+        for (var r : records) {
+            String id = r.getId().getValue();
+            var value = r.getValue();
+            result.add(StreamMessageDTO.builder()
+                    .id(id)
+                    .ack(false)
+                    .status("failed")
+                    .attribute(parseAttribute(value.get("attribute")))
+                    .build());
+        }
+        return result;
     }
 
     private Map<String, Object> parseAttribute(Object raw) {
@@ -90,6 +118,26 @@ public class RedisStreamService {
 
     public List<StreamMessageDTO> getStreamMessages() {
         return streamMessages;
+    }
+
+    public PageResult<StreamMessageDTO> getStreamMessagesPage(int page, int size, String status, String search) {
+        String lowerSearch = search == null ? "" : search.toLowerCase();
+        List<StreamMessageDTO> filtered = new ArrayList<>();
+        for (StreamMessageDTO m : streamMessages) {
+            if (status != null && !status.isEmpty() && !status.equals(m.getStatus())) continue;
+            if (!lowerSearch.isEmpty()) {
+                String id = m.getId() != null ? m.getId() : "";
+                Object taskIdObj = m.getAttribute() != null ? m.getAttribute().get("taskId") : null;
+                String taskId = taskIdObj != null ? taskIdObj.toString() : "";
+                if (!id.toLowerCase().contains(lowerSearch) && !taskId.toLowerCase().contains(lowerSearch)) continue;
+            }
+            filtered.add(m);
+        }
+        int total = filtered.size();
+        int from = Math.max(0, (page - 1) * size);
+        int to = Math.min(total, from + size);
+        List<StreamMessageDTO> list = from < to ? new ArrayList<>(filtered.subList(from, to)) : Collections.emptyList();
+        return PageResult.<StreamMessageDTO>builder().list(list).total(total).page(page).size(size).build();
     }
 
     public List<ClientDTO> getClients() {

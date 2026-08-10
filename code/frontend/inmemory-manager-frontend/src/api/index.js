@@ -52,3 +52,7 @@ export function updateTemplate(data) {
 export function deleteTemplate(id) {
   return request.delete(API_URLS.template.delete(id))
 }
+
+export function getStreamMessages(params) {
+  return request.get(API_URLS.stream.messages, { params })
+}

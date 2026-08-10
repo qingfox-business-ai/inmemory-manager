@@ -19,4 +19,6 @@ public interface TaskBatchMapper extends BaseMapper<TaskBatch> {
     List<TaskBatch> selectBatchesByTaskId(@Param("taskId") String taskId);
 
     LocalDateTime selectDatabaseNow();
+
+    List<Map<String, Object>> selectBatchStatusCountByTaskId(@Param("taskId") String taskId);
 }

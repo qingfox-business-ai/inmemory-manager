@@ -1,7 +1,9 @@
 package com.qingfox.inmemory.manager.controller;
 
 import com.qingfox.inmemory.manager.model.ApiResponse;
+import com.qingfox.inmemory.manager.model.dto.PageResult;
 import com.qingfox.inmemory.manager.model.dto.TaskDTO;
+import com.qingfox.inmemory.manager.model.dto.TaskListDTO;
 import com.qingfox.inmemory.manager.model.dto.TaskMonitorDTO;
 import com.qingfox.inmemory.manager.service.TaskMonitorService;
 import lombok.RequiredArgsConstructor;
@@ -17,12 +19,14 @@ public class TaskController {
     private final TaskMonitorService taskMonitorService;
 
     @GetMapping("/list")
-    public ApiResponse<List<TaskDTO>> list(
-            @RequestParam(value = "status", required = false) String status,
+    public ApiResponse<PageResult<TaskListDTO>> list(
             @RequestParam(value = "taskId", required = false) String taskId,
+            @RequestParam(value = "status", required = false) Short status,
             @RequestParam(value = "startTime", required = false) String startTime,
-            @RequestParam(value = "endTime", required = false) String endTime) {
-        return ApiResponse.success(taskMonitorService.getTaskList(taskId, status, startTime, endTime));
+            @RequestParam(value = "endTime", required = false) String endTime,
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
+        return ApiResponse.success(taskMonitorService.getTaskListPageFromTask(taskId, status, startTime, endTime, page, size));
     }
 
     @GetMapping("/{taskId}/monitor")

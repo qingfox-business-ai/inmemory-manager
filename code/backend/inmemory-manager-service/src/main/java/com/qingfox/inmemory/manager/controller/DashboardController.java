@@ -2,6 +2,7 @@ package com.qingfox.inmemory.manager.controller;
 
 import com.qingfox.inmemory.manager.model.ApiResponse;
 import com.qingfox.inmemory.manager.model.dto.ClientDTO;
+import com.qingfox.inmemory.manager.model.dto.StreamMessageDTO;
 import com.qingfox.inmemory.manager.model.dto.DashboardSummaryDTO;
 import com.qingfox.inmemory.manager.model.dto.TaskDTO;
 import com.qingfox.inmemory.manager.service.RedisStreamService;
@@ -26,7 +27,7 @@ public class DashboardController {
 
     @GetMapping("/summary")
     public ApiResponse<DashboardSummaryDTO> summary() {
-        String startTime = LocalDateTime.now().minusDays(1).format(FMT);
+        String startTime = LocalDateTime.now().minusDays(7).format(FMT);
         String endTime = LocalDateTime.now().format(FMT);
         List<TaskDTO> tasks = taskMonitorService.getTaskList(null, null, startTime, null);
 
@@ -47,11 +48,16 @@ public class DashboardController {
         int connected = (int) clients.stream().filter(c -> "online".equals(c.getStatus())).count();
         int disconnected = (int) clients.stream().filter(c -> "offline".equals(c.getStatus())).count();
 
+        List<StreamMessageDTO> messages = redisStreamService.getStreamMessages();
+        int queueCompleted = (int) messages.stream().filter(m -> "done".equals(m.getStatus())).count();
+        int queuePending = (int) messages.stream().filter(m -> "pending".equals(m.getStatus())).count();
+        int queueDeadLetter = (int) messages.stream().filter(m -> "failed".equals(m.getStatus())).count();
+
         DashboardSummaryDTO data = DashboardSummaryDTO.builder()
                 .client(DashboardSummaryDTO.ClientSummary.builder()
                         .connected(connected).disconnected(disconnected).build())
                 .queue(DashboardSummaryDTO.QueueSummary.builder()
-                        .completed(0).pending(0).deadLetter(0).build())
+                        .completed(queueCompleted).pending(queuePending).deadLetter(queueDeadLetter).build())
                 .task(DashboardSummaryDTO.TaskSummary.builder()
                         .success(success).waiting(waiting).failed(failed)
                         .periodStart(startTime).periodEnd(endTime).build())

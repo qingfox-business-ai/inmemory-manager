@@ -7,10 +7,10 @@
             <el-button type="primary" :icon="Refresh" @click="handleRefresh">刷新</el-button>
             <el-select v-model="statusFilter" placeholder="状态" style="width: 120px; margin-left: 12px;">
               <el-option label="全部" value="" />
-              <el-option label="成功" value="success" />
-              <el-option label="执行中" value="running" />
-              <el-option label="等待中" value="waiting" />
-              <el-option label="异常" value="failed" />
+              <el-option label="等待" :value="0" />
+              <el-option label="执行中" :value="1" />
+              <el-option label="执行成功" :value="2" />
+              <el-option label="执行失败" :value="3" />
             </el-select>
             <el-input v-model="taskIdFilter" placeholder="任务ID" style="width: 180px; margin-left: 12px;" clearable />
             <el-date-picker
@@ -23,18 +23,13 @@
               value-format="YYYY-MM-DD HH:mm"
               style="margin-left: 12px;"
             />
-            <el-button type="primary" :icon="Search" @click="fetchData" style="margin-left: 12px;">查询</el-button>
+            <el-button type="primary" :icon="Search" @click="handleSearch" style="margin-left: 12px;">查询</el-button>
           </div>
         </div>
       </template>
 
       <el-table :data="tableData" v-loading="loading" style="width: 100%" max-height="600">
-        <el-table-column prop="taskId" label="任务ID" min-width="140" />
-        <el-table-column label="批次" width="120" align="center">
-          <template #default="{ row }">
-            <span>{{ row.completedBatch }} / {{ row.totalBatch }}</span>
-          </template>
-        </el-table-column>
+        <el-table-column prop="taskMark" label="任务备注" min-width="160" />
         <el-table-column prop="status" label="状态" width="120" align="center">
           <template #default="{ row }">
             <el-tag :type="statusTagType(row.status)" effect="light">
@@ -42,6 +37,8 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="inputCount" label="输入总数据量" min-width="130" align="center" />
+        <el-table-column prop="outputCount" label="输出总数据量" min-width="130" align="center" />
         <el-table-column prop="startTime" label="开始时间" min-width="180" />
         <el-table-column prop="endTime" label="结束时间" min-width="180" />
         <el-table-column label="操作" width="120" align="center" fixed="right">
@@ -50,6 +47,17 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[10, 20, 50, 100]"
+        :total="total"
+        layout="total, sizes, prev, pager, next, jumper"
+        style="margin-top: 16px; justify-content: flex-end; display: flex;"
+        @size-change="handlePageChange"
+        @current-change="handlePageChange"
+      />
     </el-card>
 
     <el-dialog v-model="monitorDialogVisible" :title="`监控任务 - ${currentTaskId}`" width="1100px" top="5vh" @close="handleMonitorClose">
@@ -209,7 +217,7 @@ const statusFilter = ref('')
 const taskIdFilter = ref('')
 const defaultTimeRange = () => {
   const end = new Date()
-  const start = new Date(end.getTime() - 2 * 24 * 60 * 60 * 1000)
+  const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000)
   const pad = (n) => String(n).padStart(2, '0')
   const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
   return [fmt(start), fmt(end)]
@@ -221,6 +229,9 @@ const monitorData = ref(null)
 const monitorLoading = ref(false)
 const tableData = ref([])
 const loading = ref(false)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 const errorTab = ref('batch')
 const expandedErrors = reactive({})
 let monitorTimer = null
@@ -262,15 +273,18 @@ const fetchData = async () => {
   loading.value = true
   try {
     const params = {}
-    if (statusFilter.value) params.status = statusFilter.value
+    if (statusFilter.value !== '' && statusFilter.value !== null && statusFilter.value !== undefined) params.status = statusFilter.value
     if (taskIdFilter.value) params.taskId = taskIdFilter.value
     if (timeRange.value && timeRange.value.length === 2) {
       params.startTime = timeRange.value[0]
       params.endTime = timeRange.value[1]
     }
+    params.page = currentPage.value
+    params.size = pageSize.value
     const res = await getTaskList(params)
     if (res.code === 200 && res.data) {
-      tableData.value = res.data
+      tableData.value = res.data.list || []
+      total.value = res.data.total || 0
     }
   } catch (e) {
     console.error('获取任务数据失败', e)
@@ -282,12 +296,12 @@ const fetchData = async () => {
 // 任务过滤（状态/任务ID/时间范围）已改为后台交互，列表直接使用 tableData
 
 const statusTagType = (status) => {
-  const map = { success: 'success', running: 'warning', waiting: 'info', failed: 'danger' }
+  const map = { 0: 'info', 1: 'warning', 2: 'success', 3: 'danger' }
   return map[status] || 'info'
 }
 
 const statusLabel = (status) => {
-  const map = { success: '成功', running: '执行中', waiting: '等待中', failed: '异常' }
+  const map = { 0: '等待', 1: '执行中', 2: '执行成功', 3: '执行失败' }
   return map[status] || status
 }
 
@@ -337,6 +351,15 @@ const handleMonitor = async (row) => {
 
 const handleMonitorClose = () => {
   clearMonitorTimer()
+}
+
+const handleSearch = () => {
+  currentPage.value = 1
+  fetchData()
+}
+
+const handlePageChange = () => {
+  fetchData()
 }
 
 const handleRefresh = () => {

@@ -1,12 +1,17 @@
 package com.qingfox.inmemory.manager.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.qingfox.inmemory.manager.entity.Task;
 import com.qingfox.inmemory.manager.entity.TaskBatch;
 import com.qingfox.inmemory.manager.entity.TaskExecute;
 import com.qingfox.inmemory.manager.mapper.TaskBatchMapper;
 import com.qingfox.inmemory.manager.mapper.TaskExecuteMapper;
+import com.qingfox.inmemory.manager.mapper.TaskMapper;
 import com.qingfox.inmemory.manager.model.dto.ExecuteStatisticsDTO;
+import com.qingfox.inmemory.manager.model.dto.PageResult;
 import com.qingfox.inmemory.manager.model.dto.TaskDTO;
+import com.qingfox.inmemory.manager.model.dto.TaskListDTO;
 import com.qingfox.inmemory.manager.model.dto.TaskMonitorDTO;
 import com.qingfox.inmemory.manager.model.dto.TaskStatisticsDTO;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +28,7 @@ public class TaskMonitorService {
 
     private final TaskBatchMapper taskBatchMapper;
     private final TaskExecuteMapper taskExecuteMapper;
+    private final TaskMapper taskMapper;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final int MAX_ERRORS = 50;
@@ -31,7 +37,7 @@ public class TaskMonitorService {
 
     public List<TaskDTO> getTaskList(String taskId, String status, String startTime, String endTime) {
         String effectiveStart = (startTime == null || startTime.isEmpty())
-                ? LocalDateTime.now().minusDays(2).format(FMT) : startTime;
+                ? LocalDateTime.now().minusDays(7).format(FMT) : startTime;
         List<Map<String, Object>> rows = taskBatchMapper.selectTaskSummary(taskId, effectiveStart, endTime);
         if (rows == null || rows.isEmpty()) {
             return Collections.emptyList();
@@ -62,6 +68,57 @@ public class TaskMonitorService {
         })
         .filter(dto -> status == null || status.isEmpty() || status.equals(dto.getStatus()))
         .collect(Collectors.toList());
+    }
+
+    public PageResult<TaskDTO> getTaskListPage(String taskId, String status, String startTime, String endTime, int page, int size) {
+        List<TaskDTO> allForStats = getTaskList(taskId, null, startTime, endTime);
+        Map<String, Long> stats = new LinkedHashMap<>();
+        stats.put("waiting", allForStats.stream().filter(t -> "waiting".equals(t.getStatus())).count());
+        stats.put("running", allForStats.stream().filter(t -> "running".equals(t.getStatus())).count());
+        stats.put("success", allForStats.stream().filter(t -> "success".equals(t.getStatus())).count());
+        stats.put("failed", allForStats.stream().filter(t -> "failed".equals(t.getStatus())).count());
+
+        List<TaskDTO> filtered = getTaskList(taskId, status, startTime, endTime);
+        int total = filtered.size();
+        int from = Math.max(0, (page - 1) * size);
+        int to = Math.min(total, from + size);
+        List<TaskDTO> list = from < to ? new ArrayList<>(filtered.subList(from, to)) : Collections.emptyList();
+        return PageResult.<TaskDTO>builder()
+                .list(list)
+                .total(total)
+                .page(page)
+                .size(size)
+                .statusStats(stats)
+                .build();
+    }
+
+    public PageResult<TaskListDTO> getTaskListPageFromTask(String taskId, Short status, String startTime, String endTime, int page, int size) {
+        LambdaQueryWrapper<Task> wrapper = new LambdaQueryWrapper<Task>()
+                .like(taskId != null && !taskId.isEmpty(), Task::getTaskId, taskId)
+                .eq(status != null, Task::getStatus, status)
+                .ge(startTime != null && !startTime.isEmpty(), Task::getStartTime, startTime)
+                .le(endTime != null && !endTime.isEmpty(), Task::getStartTime, endTime)
+                .orderByDesc(Task::getStartTime);
+        List<Task> tasks = taskMapper.selectList(wrapper);
+        List<TaskListDTO> dtos = tasks.stream().map(this::toTaskListDTO).collect(Collectors.toList());
+        int total = dtos.size();
+        int from = Math.max(0, (page - 1) * size);
+        int to = Math.min(total, from + size);
+        List<TaskListDTO> list = from < to ? new ArrayList<>(dtos.subList(from, to)) : Collections.emptyList();
+        return PageResult.<TaskListDTO>builder()
+                .list(list).total(total).page(page).size(size).build();
+    }
+
+    private TaskListDTO toTaskListDTO(Task t) {
+        return TaskListDTO.builder()
+                .taskId(t.getTaskId())
+                .taskMark(t.getTaskMark())
+                .status(t.getStatus() != null ? t.getStatus().intValue() : null)
+                .inputCount(t.getInputCount())
+                .outputCount(t.getOutputCount())
+                .startTime(formatTimestamp(t.getStartTime()))
+                .endTime(formatTimestamp(t.getEndTime()))
+                .build();
     }
 
     public TaskMonitorDTO getTaskMonitor(String taskId) {
