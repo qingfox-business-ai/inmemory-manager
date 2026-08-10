@@ -29,6 +29,10 @@ export function getTaskMonitor(taskId) {
   return request.get(API_URLS.task.monitor(taskId))
 }
 
+export function getTaskBatches(taskId) {
+  return request.get(API_URLS.task.batches(taskId))
+}
+
 export function getTemplateList() {
   return request.get(API_URLS.template.list)
 }

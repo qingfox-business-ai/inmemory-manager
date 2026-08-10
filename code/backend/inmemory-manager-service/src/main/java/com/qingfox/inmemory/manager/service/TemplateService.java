@@ -44,7 +44,8 @@ public class TemplateService {
         template.setTemplateName(dto.getTemplateName());
         template.setResolverId(dto.getResolverId());
         template.setSubResolverId(dto.getSubResolverId());
-        template.setStatisticsExecuteId(dto.getStatisticsExecuteId());
+        template.setInputId(dto.getInputId());
+        template.setOutputId(dto.getOutputId());
         template.setCustomData(dto.getCustomData());
         template.setInputData(dto.getInputData());
         LocalDateTime now = LocalDateTime.now();
@@ -61,7 +62,8 @@ public class TemplateService {
         template.setTemplateName(dto.getTemplateName());
         template.setResolverId(dto.getResolverId());
         template.setSubResolverId(dto.getSubResolverId());
-        template.setStatisticsExecuteId(dto.getStatisticsExecuteId());
+        template.setInputId(dto.getInputId());
+        template.setOutputId(dto.getOutputId());
         template.setCustomData(dto.getCustomData());
         template.setInputData(dto.getInputData());
         template.setUpdateTime(LocalDateTime.now());
@@ -89,7 +91,8 @@ public class TemplateService {
                 .templateName(template.getTemplateName())
                 .resolverId(template.getResolverId())
                 .subResolverId(template.getSubResolverId())
-                .statisticsExecuteId(template.getStatisticsExecuteId())
+                .inputId(template.getInputId())
+                .outputId(template.getOutputId())
                 .createTime(formatTime(template.getCreateTime()))
                 .updateTime(formatTime(template.getUpdateTime()))
                 .build();

@@ -10,7 +10,7 @@
               <el-icon class="stat-icon success"><Connection /></el-icon>
               <div class="stat-body">
                 <div :class="['stat-value', fetchError ? 'na-text' : 'success-text']">{{ fetchError ? 'N/A' : clientData.connected }}</div>
-                <div class="stat-label">已连接客户端</div>
+                <div class="stat-label">已连接</div>
                 <div class="stat-unit">台</div>
               </div>
             </div>
@@ -22,51 +22,8 @@
               <el-icon class="stat-icon danger"><SwitchButton /></el-icon>
               <div class="stat-body">
                 <div :class="['stat-value', fetchError ? 'na-text' : 'danger-text']">{{ fetchError ? 'N/A' : clientData.disconnected }}</div>
-                <div class="stat-label">连接丢失客户端</div>
+                <div class="stat-label">已丢失</div>
                 <div class="stat-unit">台</div>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-      </el-row>
-    </div>
-
-    <!-- 队列统计 -->
-    <div class="section">
-      <div class="section-title">队列统计（实时）</div>
-      <el-row :gutter="20">
-        <el-col :span="8">
-          <el-card shadow="hover" class="stat-card">
-            <div class="stat-content">
-              <el-icon class="stat-icon success"><CircleCheck /></el-icon>
-              <div class="stat-body">
-                <div :class="['stat-value', fetchError ? 'na-text' : 'success-text']">{{ fetchError ? 'N/A' : queueData.completed }}</div>
-                <div class="stat-label">执行完成的队列</div>
-                <div class="stat-unit">条</div>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-        <el-col :span="8">
-          <el-card shadow="hover" class="stat-card">
-            <div class="stat-content">
-              <el-icon class="stat-icon warning"><Clock /></el-icon>
-              <div class="stat-body">
-                <div :class="['stat-value', fetchError ? 'na-text' : 'warning-text']">{{ fetchError ? 'N/A' : queueData.pending }}</div>
-                <div class="stat-label">未执行的队列</div>
-                <div class="stat-unit">条</div>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-        <el-col :span="8">
-          <el-card shadow="hover" class="stat-card">
-            <div class="stat-content">
-              <el-icon class="stat-icon danger"><WarningFilled /></el-icon>
-              <div class="stat-body">
-                <div :class="['stat-value', fetchError ? 'na-text' : 'danger-text']">{{ fetchError ? 'N/A' : queueData.deadLetter }}</div>
-                <div class="stat-label">死信队列</div>
-                <div class="stat-unit">条</div>
               </div>
             </div>
           </el-card>
@@ -81,37 +38,49 @@
         <span class="stat-period">统计时段：[{{ fetchError ? 'N/A' : taskData.periodStart }} ~ {{ fetchError ? 'N/A' : taskData.periodEnd }}]</span>
       </div>
       <el-row :gutter="20">
-        <el-col :span="8">
+        <el-col :span="6">
           <el-card shadow="hover" class="stat-card">
             <div class="stat-content">
               <el-icon class="stat-icon success"><SuccessFilled /></el-icon>
               <div class="stat-body">
                 <div :class="['stat-value', fetchError ? 'na-text' : 'success-text']">{{ fetchError ? 'N/A' : taskData.success }}</div>
-                <div class="stat-label">执行成功的任务</div>
+                <div class="stat-label">成功</div>
                 <div class="stat-unit">个</div>
               </div>
             </div>
           </el-card>
         </el-col>
-        <el-col :span="8">
+        <el-col :span="6">
           <el-card shadow="hover" class="stat-card">
             <div class="stat-content">
               <el-icon class="stat-icon warning"><Clock /></el-icon>
               <div class="stat-body">
                 <div :class="['stat-value', fetchError ? 'na-text' : 'warning-text']">{{ fetchError ? 'N/A' : taskData.waiting }}</div>
-                <div class="stat-label">等待中的任务</div>
+                <div class="stat-label">等待中</div>
                 <div class="stat-unit">个</div>
               </div>
             </div>
           </el-card>
         </el-col>
-        <el-col :span="8">
+        <el-col :span="6">
+          <el-card shadow="hover" class="stat-card">
+            <div class="stat-content">
+              <el-icon class="stat-icon info"><Loading /></el-icon>
+              <div class="stat-body">
+                <div :class="['stat-value', fetchError ? 'na-text' : 'info-text']">{{ fetchError ? 'N/A' : taskData.running }}</div>
+                <div class="stat-label">执行中</div>
+                <div class="stat-unit">个</div>
+              </div>
+            </div>
+          </el-card>
+        </el-col>
+        <el-col :span="6">
           <el-card shadow="hover" class="stat-card">
             <div class="stat-content">
               <el-icon class="stat-icon danger"><CircleCloseFilled /></el-icon>
               <div class="stat-body">
                 <div :class="['stat-value', fetchError ? 'na-text' : 'danger-text']">{{ fetchError ? 'N/A' : taskData.failed }}</div>
-                <div class="stat-label">执行异常的任务</div>
+                <div class="stat-label">异常</div>
                 <div class="stat-unit">个</div>
               </div>
             </div>
@@ -130,7 +99,7 @@ const fetchError = ref(false)
 const loading = ref(false)
 const clientData = ref({ connected: 0, disconnected: 0 })
 const queueData = ref({ completed: 0, pending: 0, deadLetter: 0 })
-const taskData = ref({ success: 0, waiting: 0, failed: 0, periodStart: '', periodEnd: '' })
+const taskData = ref({ success: 0, waiting: 0, running: 0, failed: 0, periodStart: '', periodEnd: '' })
 
 const fetchSummary = async () => {
   loading.value = true
@@ -243,8 +212,14 @@ onMounted(() => {
 }
 
 .stat-unit {
-  font-size: 12px;
-  color: #c0c4cc;
-  margin-top: 2px;
+  display: none;
+}
+
+.info-text {
+  color: #909399;
+}
+
+.stat-icon.info {
+  color: #909399;
 }
 </style>

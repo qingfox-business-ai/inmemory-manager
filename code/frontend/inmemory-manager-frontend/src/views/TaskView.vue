@@ -29,6 +29,18 @@
       </template>
 
       <el-table :data="tableData" v-loading="loading" style="width: 100%" max-height="600">
+        <el-table-column label="任务ID" min-width="200">
+          <template #default="{ row }">
+            <div class="task-id-cell">
+              <span class="task-id-text" :title="row.taskId">{{ row.taskId }}</span>
+              <el-tooltip content="复制" placement="top">
+                <el-button link size="small" class="copy-btn" @click="copyTaskId(row.taskId)">
+                  <el-icon :size="14"><CopyDocument /></el-icon>
+                </el-button>
+              </el-tooltip>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="taskMark" label="任务备注" min-width="160" />
         <el-table-column prop="status" label="状态" width="120" align="center">
           <template #default="{ row }">
@@ -37,13 +49,37 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="inputCount" label="输入总数据量" min-width="130" align="center" />
-        <el-table-column prop="outputCount" label="输出总数据量" min-width="130" align="center" />
-        <el-table-column prop="startTime" label="开始时间" min-width="180" />
-        <el-table-column prop="endTime" label="结束时间" min-width="180" />
-        <el-table-column label="操作" width="120" align="center" fixed="right">
+        <el-table-column label="批次统计" min-width="300">
           <template #default="{ row }">
-            <el-button size="small" type="primary" @click="handleMonitor(row)">监控任务</el-button>
+            <el-tag size="small" type="info" effect="plain">等待 {{ row.batchWait || 0 }}</el-tag>
+            <el-tag size="small" type="warning" effect="plain" style="margin-left: 4px;">运行 {{ row.batchRun || 0 }}</el-tag>
+            <el-tag size="small" type="success" effect="plain" style="margin-left: 4px;">完成 {{ row.batchDone || 0 }}</el-tag>
+            <el-tag size="small" type="danger" effect="plain" style="margin-left: 4px;">失败 {{ row.batchFailure || 0 }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="消息统计" min-width="300">
+          <template #default="{ row }">
+            <el-tag size="small" type="info" effect="plain">等待 {{ row.queueWait || 0 }}</el-tag>
+            <el-tag size="small" type="warning" effect="plain" style="margin-left: 4px;">运行 {{ row.queueRun || 0 }}</el-tag>
+            <el-tag size="small" type="success" effect="plain" style="margin-left: 4px;">完成 {{ row.queueDone || 0 }}</el-tag>
+            <el-tag size="small" type="danger" effect="plain" style="margin-left: 4px;">失败 {{ row.queueFailure || 0 }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="数据量(输入/输出)" min-width="140" align="center">
+          <template #default="{ row }">
+            <span>{{ row.inputCount != null ? row.inputCount : '-' }} / {{ row.outputCount != null ? row.outputCount : '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="执行时间" min-width="320">
+          <template #default="{ row }">
+            <span>{{ row.startTime || '-' }} ~ {{ row.endTime || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="230" align="center" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" @click="showBatchDetail(row)">批次</el-button>
+            <el-button size="small" @click="showQueueDetail(row)">队列</el-button>
+            <el-button size="small" type="primary" @click="handleMonitor(row)">监控</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -62,42 +98,53 @@
 
     <el-dialog v-model="monitorDialogVisible" :title="`监控任务 - ${currentTaskId}`" width="1100px" top="5vh" @close="handleMonitorClose">
       <div v-loading="monitorLoading">
+        <!-- 自动刷新工具栏 -->
+        <div class="monitor-toolbar">
+          <span class="toolbar-label">自动刷新</span>
+          <el-select v-model="refreshInterval" size="small" style="width: 100px" @change="onRefreshChange">
+            <el-option v-for="opt in refreshOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+          </el-select>
+        </div>
+
         <!-- 概览区 -->
         <div v-if="monitorData" class="overview-section">
-          <el-descriptions :column="3" border size="small">
+          <el-descriptions :column="2" border size="small">
             <el-descriptions-item label="状态">
-              <el-tag :type="monitorData.statistics.status === 1 ? 'warning' : 'success'" effect="light">
-                {{ monitorData.statistics.status === 1 ? '进行中' : '已完成' }}
+              <el-tag :type="statusTagType(monitorData.statistics.status)" effect="light">
+                {{ statusLabel(monitorData.statistics.status) }}
               </el-tag>
             </el-descriptions-item>
-            <el-descriptions-item label="数据库时间">{{ monitorData.statistics.nowTime }}</el-descriptions-item>
-            <el-descriptions-item label="异常批次">{{ monitorData.statistics.errorCount }}</el-descriptions-item>
+            <el-descriptions-item label="更新时间">{{ monitorData.statistics.nowTime }}</el-descriptions-item>
             <el-descriptions-item label="开始时间">{{ monitorData.statistics.startTime }}</el-descriptions-item>
             <el-descriptions-item label="结束时间">{{ monitorData.statistics.endTime || '-' }}</el-descriptions-item>
-            <el-descriptions-item label=""></el-descriptions-item>
+            <el-descriptions-item label="执行时长">{{ formatDuration(monitorData.statistics.duration) }}</el-descriptions-item>
           </el-descriptions>
 
           <el-row :gutter="16" style="margin-top: 12px;">
             <el-col :span="6">
               <div class="stat-card">
-                <div class="stat-value">{{ monitorData.statistics.allCount }}</div>
-                <div class="stat-label">总批次</div>
-              </div>
-            </el-col>
-            <el-col :span="6">
-              <div class="stat-card">
                 <div class="stat-value stat-success">{{ monitorData.statistics.doneCount }}</div>
-                <div class="stat-label">已完成</div>
+                <div class="stat-label">成功</div>
               </div>
             </el-col>
             <el-col :span="6">
               <div class="stat-card">
-                <div class="stat-value stat-warning">{{ monitorData.statistics.runningCount }}</div>
-                <div class="stat-label">进行中</div>
+                <div class="stat-value stat-warning">{{ monitorData.statistics.allCount }}</div>
+                <div class="stat-label">等待中</div>
               </div>
             </el-col>
             <el-col :span="6">
               <div class="stat-card">
+                <div class="stat-value" style="color: #909399;">{{ monitorData.statistics.runningCount }}</div>
+                <div class="stat-label">执行中</div>
+              </div>
+            </el-col>
+            <el-col :span="6">
+              <div
+                class="stat-card"
+                :class="{ 'stat-clickable': monitorData.statistics.errorCount > 0 }"
+                @click="showTaskErrors"
+              >
                 <div class="stat-value stat-danger">{{ monitorData.statistics.errorCount }}</div>
                 <div class="stat-label">异常</div>
               </div>
@@ -133,74 +180,85 @@
           <el-table-column prop="avgOut" label="平均输出" width="90" align="center" />
           <el-table-column prop="outPerSecond" label="输出/秒" width="90" align="center" />
           <el-table-column prop="updateTime" label="更新时间" width="160" align="center" />
-          <el-table-column prop="errorCount" label="异常" width="80" align="center">
+          <el-table-column prop="errorCount" label="异常" width="90" align="center">
             <template #default="{ row }">
-              <el-badge v-if="row.errorCount > 0" :value="row.errorCount" type="danger">
-                <span class="error-text">{{ row.errorCount }}</span>
-              </el-badge>
-              <span v-else>0</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="100" align="center">
-            <template #default="{ row }">
-              <el-button
+              <span
                 v-if="row.errorCount > 0"
-                size="small"
-                type="danger"
-                link
-                @click="viewExecuteErrors(row)"
-              >查看异常</el-button>
+                class="error-text error-clickable"
+                @click="showExecuteErrors(row)"
+              >{{ row.errorCount }}</span>
+              <span v-else>0</span>
             </template>
           </el-table-column>
         </el-table>
 
-        <!-- 异常信息区 -->
-        <div v-if="monitorData" class="section-title">
-          异常信息
-        </div>
-        <el-tabs v-if="monitorData" v-model="errorTab" class="error-tabs">
-          <el-tab-pane label="批次异常" name="batch">
-            <div v-if="monitorData.statistics.errorStack && monitorData.statistics.errorStack.length" class="error-list">
-              <el-card
-                v-for="(err, idx) in monitorData.statistics.errorStack"
-                :key="'batch-' + idx"
-                class="error-card"
-                shadow="never"
-              >
-                <div class="error-header" @click="toggleError('batch-' + idx)">
-                  <span class="error-icon">🔴</span>
-                  <span class="error-title-text">{{ err.substring(0, 100) }}{{ err.length > 100 ? '...' : '' }}</span>
-                  <span class="error-expand">{{ expandedErrors['batch-' + idx] ? '收起' : '展开' }}</span>
-                </div>
-                <div v-if="expandedErrors['batch-' + idx]" class="error-detail">{{ err }}</div>
-              </el-card>
-            </div>
-            <el-empty v-else description="无批次异常" :image-size="60" />
-          </el-tab-pane>
-
-          <el-tab-pane label="执行器异常" name="execute">
-            <div v-if="executeErrors.length" class="error-list">
-              <el-card
-                v-for="(err, idx) in executeErrors"
-                :key="'exec-' + idx"
-                class="error-card"
-                shadow="never"
-              >
-                <div class="error-header" @click="toggleError('exec-' + idx)">
-                  <span class="error-icon">🔴</span>
-                  <span class="error-title-text">{{ err.substring(0, 100) }}{{ err.length > 100 ? '...' : '' }}</span>
-                  <span class="error-expand">{{ expandedErrors['exec-' + idx] ? '收起' : '展开' }}</span>
-                </div>
-                <div v-if="expandedErrors['exec-' + idx]" class="error-detail">{{ err }}</div>
-              </el-card>
-            </div>
-            <el-empty v-else description="无执行器异常" :image-size="60" />
-          </el-tab-pane>
-        </el-tabs>
       </div>
 
       <template #footer>
         <el-button @click="monitorDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="batchDialogVisible" :title="'批次列表 - ' + (currentRow ? currentRow.taskId : '')" width="900px" top="5vh">
+      <el-table :data="batchList" v-loading="batchLoading" border style="width: 100%" max-height="500">
+        <el-table-column prop="batchId" label="批次ID" min-width="140" />
+        <el-table-column label="状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="batchStatusType(row.status)" size="small">{{ batchStatusLabel(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="updateTime" label="更新时间" min-width="170" />
+        <el-table-column prop="errorStack" label="错误信息" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="startTime" label="开始时间" min-width="170" />
+        <el-table-column prop="endTime" label="结束时间" min-width="170" />
+      </el-table>
+    </el-dialog>
+
+    <el-dialog v-model="queueDialogVisible" :title="'队列列表 - ' + (currentRow ? currentRow.taskId : '')" width="700px" top="5vh">
+      <el-table :data="queueList" v-loading="queueLoading" border style="width: 100%" max-height="500">
+        <el-table-column prop="id" label="消息ID" min-width="180" />
+        <el-table-column label="批次ID" min-width="120">
+          <template #default="{ row }">{{ row.attribute && row.attribute.batchId }}</template>
+        </el-table-column>
+        <el-table-column label="状态" width="120" align="center">
+          <template #default="{ row }">
+            <el-tag :type="queueStatusType(row.status)" size="small">{{ queueStatusLabel(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="100" align="center">
+          <template #default="{ row }">
+            <el-button size="small" link type="primary" @click="showQueueMessageDetail(row)">详情</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
+
+    <el-dialog v-model="detailDialogVisible" :title="'消息详情 - ' + (currentMessageId || '')" width="650px" append-to-body>
+      <el-table :data="attributeTableData" border style="width: 100%" max-height="500">
+        <el-table-column prop="key" label="属性" width="180" />
+        <el-table-column prop="value" label="值" show-overflow-tooltip />
+      </el-table>
+    </el-dialog>
+
+    <el-dialog v-model="errorDialogVisible" :title="errorDialogTitle" width="750px" top="8vh" append-to-body>
+      <div v-if="currentErrorList && currentErrorList.length" class="error-list">
+        <el-card
+          v-for="(err, idx) in currentErrorList"
+          :key="idx"
+          class="error-card"
+          shadow="never"
+        >
+          <div class="error-header" @click="toggleError(idx)">
+            <span class="error-icon">🔴</span>
+            <span class="error-title-text">{{ err.substring(0, 100) }}{{ err.length > 100 ? '...' : '' }}</span>
+            <span class="error-expand">{{ expandedErrors[idx] ? '收起' : '展开' }}</span>
+          </div>
+          <div v-if="expandedErrors[idx]" class="error-detail">{{ err }}</div>
+        </el-card>
+      </div>
+      <el-empty v-else description="无异常信息" :image-size="60" />
+      <template #footer>
+        <el-button @click="errorDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
   </div>
@@ -208,10 +266,9 @@
 
 <script setup>
 import { ref, computed, reactive, onMounted, onBeforeUnmount } from 'vue'
-import { Refresh, Search } from '@element-plus/icons-vue'
-import { getTaskList, getTaskMonitor } from '@/api'
-
-const MONITOR_POLL_INTERVAL = 10000
+import { Refresh, Search, CopyDocument } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { getTaskList, getTaskMonitor, getTaskBatches, getStreamMessages } from '@/api'
 
 const statusFilter = ref('')
 const taskIdFilter = ref('')
@@ -227,13 +284,21 @@ const monitorDialogVisible = ref(false)
 const currentTaskId = ref('')
 const monitorData = ref(null)
 const monitorLoading = ref(false)
+const refreshInterval = ref(10000)
+const refreshOptions = [
+  { label: '无', value: 0 },
+  { label: '5秒', value: 5000 },
+  { label: '10秒', value: 10000 }
+]
 const tableData = ref([])
 const loading = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
-const errorTab = ref('batch')
 const expandedErrors = reactive({})
+const errorDialogVisible = ref(false)
+const errorDialogTitle = ref('')
+const currentErrorList = ref([])
 let monitorTimer = null
 
 const clearMonitorTimer = () => {
@@ -264,9 +329,13 @@ const fetchMonitorSilent = async () => {
 
 const startMonitorTimer = () => {
   clearMonitorTimer()
-  if (isRunning()) {
-    monitorTimer = setInterval(fetchMonitorSilent, MONITOR_POLL_INTERVAL)
+  if (isRunning() && refreshInterval.value > 0) {
+    monitorTimer = setInterval(fetchMonitorSilent, refreshInterval.value)
   }
+}
+
+const onRefreshChange = () => {
+  startMonitorTimer()
 }
 
 const fetchData = async () => {
@@ -305,16 +374,18 @@ const statusLabel = (status) => {
   return map[status] || status
 }
 
-const executeErrors = computed(() => {
-  if (!monitorData.value || !monitorData.value.executes) return []
-  const errors = []
-  for (const exec of monitorData.value.executes) {
-    if (exec.errorStack && exec.errorStack.length) {
-      errors.push(...exec.errorStack)
-    }
-  }
-  return errors
-})
+const formatDuration = (ms) => {
+  if (!ms || ms <= 0) return '-'
+  const totalSec = Math.floor(ms / 1000)
+  const days = Math.floor(totalSec / 86400)
+  const hours = Math.floor((totalSec % 86400) / 3600)
+  const minutes = Math.floor((totalSec % 3600) / 60)
+  const seconds = totalSec % 60
+  const pad = (n) => String(n).padStart(2, '0')
+  return days > 0
+    ? `${days}天 ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+    : `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+}
 
 const executeRowClass = ({ row }) => {
   if (row.errorCount > 0) return 'error-row'
@@ -325,8 +396,21 @@ const toggleError = (key) => {
   expandedErrors[key] = !expandedErrors[key]
 }
 
-const viewExecuteErrors = (row) => {
-  errorTab.value = 'execute'
+const openErrorDialog = (title, list) => {
+  errorDialogTitle.value = title
+  currentErrorList.value = list && list.length ? list : []
+  Object.keys(expandedErrors).forEach(k => delete expandedErrors[k])
+  errorDialogVisible.value = true
+}
+
+const showTaskErrors = () => {
+  if (monitorData.value && monitorData.value.statistics && monitorData.value.statistics.errorCount > 0) {
+    openErrorDialog('任务异常信息', monitorData.value.statistics.errorStack)
+  }
+}
+
+const showExecuteErrors = (row) => {
+  openErrorDialog('执行器异常 - ' + row.executeId, row.errorStack)
 }
 
 const handleMonitor = async (row) => {
@@ -351,7 +435,118 @@ const handleMonitor = async (row) => {
 
 const handleMonitorClose = () => {
   clearMonitorTimer()
+  errorDialogVisible.value = false
 }
+
+const copyTaskId = (taskId) => {
+  const textarea = document.createElement('textarea')
+  textarea.value = taskId
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  try {
+    document.execCommand('copy')
+    ElMessage.success('任务ID已复制')
+  } catch (e) {
+    ElMessage.error('复制失败')
+  }
+  document.body.removeChild(textarea)
+}
+
+const batchDialogVisible = ref(false)
+const queueDialogVisible = ref(false)
+const currentRow = ref(null)
+const batchList = ref([])
+const batchLoading = ref(false)
+const queueList = ref([])
+const queueLoading = ref(false)
+const detailDialogVisible = ref(false)
+const currentMessageId = ref('')
+const currentAttribute = ref(null)
+
+const showBatchDetail = async (row) => {
+  currentRow.value = row
+  batchDialogVisible.value = true
+  batchLoading.value = true
+  try {
+    const res = await getTaskBatches(row.taskId)
+    if (res.code === 200) {
+      batchList.value = res.data || []
+    }
+  } catch (e) {
+    console.error('获取批次数据失败', e)
+  } finally {
+    batchLoading.value = false
+  }
+}
+const showQueueDetail = async (row) => {
+  currentRow.value = row
+  queueDialogVisible.value = true
+  queueLoading.value = true
+  try {
+    const res = await getStreamMessages({ taskId: row.taskId, page: 1, size: 1000 })
+    if (res.code === 200 && res.data) {
+      queueList.value = res.data.list || []
+    }
+  } catch (e) {
+    console.error('获取队列数据失败', e)
+  } finally {
+    queueLoading.value = false
+  }
+}
+
+const showQueueMessageDetail = (row) => {
+  currentMessageId.value = row.id
+  currentAttribute.value = row.attribute
+  detailDialogVisible.value = true
+}
+
+const attributeTableData = computed(() => {
+  if (!currentAttribute.value) return []
+  return Object.entries(currentAttribute.value).map(([key, value]) => ({
+    key,
+    value: typeof value === 'object' ? JSON.stringify(value) : String(value)
+  }))
+})
+
+const batchStatusLabel = (status) => {
+  const map = { 0: '等待', 1: '运行', 2: '完成', 3: '失败' }
+  return map[status] || status
+}
+const batchStatusType = (status) => {
+  const map = { 0: 'info', 1: 'warning', 2: 'success', 3: 'danger' }
+  return map[status] || 'info'
+}
+
+const queueStatusLabel = (status) => {
+  const map = { waiting: '等待', running: '运行中', done: '完成', failed: '失败' }
+  return map[status] || status
+}
+const queueStatusType = (status) => {
+  const map = { waiting: 'info', running: 'warning', done: 'success', failed: 'danger' }
+  return map[status] || 'info'
+}
+
+const batchTableData = computed(() => {
+  if (!currentRow.value) return []
+  return [
+    { label: '等待', value: currentRow.value.batchWait || 0 },
+    { label: '运行', value: currentRow.value.batchRun || 0 },
+    { label: '完成', value: currentRow.value.batchDone || 0 },
+    { label: '失败', value: currentRow.value.batchFailure || 0 },
+  ]
+})
+
+const queueTableData = computed(() => {
+  if (!currentRow.value) return []
+  return [
+    { label: '等待', value: currentRow.value.queueWait || 0 },
+    { label: '运行', value: currentRow.value.queueRun || 0 },
+    { label: '完成', value: currentRow.value.queueDone || 0 },
+    { label: '失败', value: currentRow.value.queueFailure || 0 },
+  ]
+})
 
 const handleSearch = () => {
   currentPage.value = 1
@@ -380,6 +575,24 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
+.task-id-cell {
+  display: flex;
+  align-items: center;
+}
+
+.task-id-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
+
+.copy-btn {
+  margin-left: 4px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
 .toolbar {
   display: flex;
   align-items: center;
@@ -396,11 +609,33 @@ onBeforeUnmount(() => {
   margin-bottom: 20px;
 }
 
+.monitor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.toolbar-label {
+  font-size: 13px;
+  color: #606266;
+}
+
 .stat-card {
   text-align: center;
   padding: 16px 0;
   background: #f5f7fa;
   border-radius: 6px;
+}
+
+.stat-clickable {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.stat-clickable:hover {
+  background: #fef0f0;
 }
 
 .stat-value {
@@ -432,13 +667,18 @@ onBeforeUnmount(() => {
   color: #f56c6c;
 }
 
-.error-row {
-  background-color: #fef0f0 !important;
+.error-clickable {
+  cursor: pointer;
+  font-weight: bold;
+  text-decoration: underline;
 }
 
-.error-tabs {
-  height: 320px;
-  overflow-y: auto;
+.error-clickable:hover {
+  opacity: 0.75;
+}
+
+.error-row {
+  background-color: #fef0f0 !important;
 }
 
 .error-list {

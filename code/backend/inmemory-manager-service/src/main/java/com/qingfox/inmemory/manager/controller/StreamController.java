@@ -37,8 +37,9 @@ public class StreamController {
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "size", defaultValue = "10") int size,
             @RequestParam(value = "status", required = false) String status,
-            @RequestParam(value = "search", required = false) String search) {
-        PageResult<StreamMessageDTO> data = redisStreamService.getStreamMessagesPage(page, size, status, search);
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "taskId", required = false) String taskId) {
+        PageResult<StreamMessageDTO> data = redisStreamService.getStreamMessagesPage(page, size, status, search, taskId);
         log.info("access stream messages api, page={}, size={}, total={}", page, size, data.getTotal());
         return ApiResponse.success(data);
     }

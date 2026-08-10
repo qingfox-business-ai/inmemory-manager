@@ -7,8 +7,9 @@
             <el-button type="primary" :icon="Refresh" @click="handleSearch">刷新</el-button>
             <el-select v-model="statusFilter" placeholder="状态" style="width: 120px; margin-left: 12px;" @change="handleSearch">
               <el-option label="全部" value="" />
-              <el-option label="处理完成" value="done" />
-              <el-option label="未处理" value="pending" />
+              <el-option label="等待" value="waiting" />
+              <el-option label="运行中" value="running" />
+              <el-option label="完成" value="done" />
               <el-option label="失败" value="failed" />
             </el-select>
           </div>
@@ -97,12 +98,12 @@ const handlePageChange = () => {
 }
 
 const statusTagType = (status) => {
-  const map = { done: 'success', pending: 'warning', failed: 'danger' }
+  const map = { waiting: 'info', running: 'warning', done: 'success', failed: 'danger' }
   return map[status] || 'info'
 }
 
 const statusLabel = (status) => {
-  const map = { done: '✓ 处理完成', pending: '⏳ 未处理', failed: '✗ 失败' }
+  const map = { waiting: '等待', running: '运行中', done: '完成', failed: '失败' }
   return map[status] || status
 }
 

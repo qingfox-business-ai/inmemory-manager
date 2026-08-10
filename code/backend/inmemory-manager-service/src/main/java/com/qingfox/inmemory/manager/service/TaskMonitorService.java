@@ -11,6 +11,7 @@ import com.qingfox.inmemory.manager.mapper.TaskMapper;
 import com.qingfox.inmemory.manager.model.dto.ExecuteStatisticsDTO;
 import com.qingfox.inmemory.manager.model.dto.PageResult;
 import com.qingfox.inmemory.manager.model.dto.TaskDTO;
+import com.qingfox.inmemory.manager.model.dto.BatchDTO;
 import com.qingfox.inmemory.manager.model.dto.TaskListDTO;
 import com.qingfox.inmemory.manager.model.dto.TaskMonitorDTO;
 import com.qingfox.inmemory.manager.model.dto.TaskStatisticsDTO;
@@ -18,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -118,15 +120,38 @@ public class TaskMonitorService {
                 .outputCount(t.getOutputCount())
                 .startTime(formatTimestamp(t.getStartTime()))
                 .endTime(formatTimestamp(t.getEndTime()))
+                .batchWait(t.getBatchWait())
+                .batchRun(t.getBatchRun())
+                .batchDone(t.getBatchDone())
+                .batchFailure(t.getBatchFailure())
+                .queueWait(t.getQueueWait())
+                .queueRun(t.getQueueRun())
+                .queueDone(t.getQueueDone())
+                .queueFailure(t.getQueueFailure())
                 .build();
     }
 
-    public TaskMonitorDTO getTaskMonitor(String taskId) {
+    public List<BatchDTO> getTaskBatches(String taskId) {
         List<TaskBatch> batches = taskBatchMapper.selectBatchesByTaskId(taskId);
-        List<TaskExecute> executes = taskExecuteMapper.selectExecutesByTaskId(taskId);
-        LocalDateTime dbNow = taskBatchMapper.selectDatabaseNow();
+        if (batches == null || batches.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return batches.stream().map(b -> BatchDTO.builder()
+                .batchId(b.getBatchId())
+                .status(b.getStatus() != null ? b.getStatus().intValue() : null)
+                .updateTime(formatTimestamp(b.getUpdateTime()))
+                .errorStack(b.getErrorStack())
+                .startTime(formatTimestamp(b.getStartTime()))
+                .endTime(formatTimestamp(b.getEndTime()))
+                .build()).collect(Collectors.toList());
+    }
 
-        TaskStatisticsDTO statistics = buildStatistics(batches, dbNow);
+    public TaskMonitorDTO getTaskMonitor(String taskId) {
+        Task task = taskMapper.selectOne(new LambdaQueryWrapper<Task>().eq(Task::getTaskId, taskId));
+        List<TaskExecute> executes = taskExecuteMapper.selectExecutesByTaskId(taskId);
+
+        LocalDateTime dbNow = taskBatchMapper.selectDatabaseNow();
+        TaskStatisticsDTO statistics = buildStatisticsFromTask(task, dbNow);
         List<ExecuteStatisticsDTO> executeStats = buildExecuteStatistics(executes);
 
         return TaskMonitorDTO.builder()
@@ -136,11 +161,42 @@ public class TaskMonitorService {
                 .build();
     }
 
+    private TaskStatisticsDTO buildStatisticsFromTask(Task t, LocalDateTime dbNow) {
+        if (t == null) {
+            return TaskStatisticsDTO.builder()
+                    .allCount(0).doneCount(0).runningCount(0).errorCount(0)
+                    .status(0).startTime("").endTime("").nowTime("")
+                    .duration(0)
+                    .errorStack(Collections.emptyList())
+                    .build();
+        }
+        long wait = t.getBatchWait() != null ? t.getBatchWait() : 0;
+        long run = t.getBatchRun() != null ? t.getBatchRun() : 0;
+        long done = t.getBatchDone() != null ? t.getBatchDone() : 0;
+        long failure = t.getBatchFailure() != null ? t.getBatchFailure() : 0;
+        LocalDateTime start = t.getStartTime();
+        LocalDateTime end = t.getEndTime() != null ? t.getEndTime() : dbNow;
+        long duration = (start != null && end != null) ? Math.max(0, Duration.between(start, end).toMillis()) : 0;
+        return TaskStatisticsDTO.builder()
+                .allCount((int) wait)
+                .doneCount((int) done)
+                .runningCount((int) run)
+                .errorCount((int) failure)
+                .status(t.getStatus() != null ? t.getStatus().intValue() : 0)
+                .startTime(formatTimestamp(t.getStartTime()))
+                .endTime(formatTimestamp(t.getEndTime()))
+                .nowTime(formatTimestamp(t.getUpdateTime()))
+                .duration(duration)
+                .errorStack(Collections.emptyList())
+                .build();
+    }
+
     private TaskStatisticsDTO buildStatistics(List<TaskBatch> batches, LocalDateTime dbNow) {
         if (batches == null || batches.isEmpty()) {
             return TaskStatisticsDTO.builder()
                     .allCount(0).doneCount(0).runningCount(0).errorCount(0)
                     .status(2).startTime("").endTime("").nowTime(formatTimestamp(dbNow))
+                    .duration(0)
                     .errorStack(Collections.emptyList())
                     .build();
         }
@@ -174,6 +230,9 @@ public class TaskMonitorService {
 
         int runningCount = allCount - doneCount;
 
+        LocalDateTime durEnd = maxEnd != null ? maxEnd : dbNow;
+        long duration = (minStart != null) ? Math.max(0, Duration.between(minStart, durEnd).toMillis()) : 0;
+
         return TaskStatisticsDTO.builder()
                 .allCount(allCount)
                 .doneCount(doneCount)
@@ -183,6 +242,7 @@ public class TaskMonitorService {
                 .startTime(formatTimestamp(minStart))
                 .endTime(formatTimestamp(maxEnd))
                 .nowTime(formatTimestamp(dbNow))
+                .duration(duration)
                 .errorStack(errors)
                 .build();
     }
@@ -235,7 +295,7 @@ public class TaskMonitorService {
                     .duration(duration)
                     .avgIn(safeDiv(inCount, runCount))
                     .avgOut(safeDiv(outCount, runCount))
-                    .outPerSecond(safeDiv(outCount * 1000, duration))
+                    .outPerSecond(duration == 0 ? 0 : (int) ((long) outCount * 1000L / duration))
                     .createTime(formatTimestamp(minCreate))
                     .updateTime(formatTimestamp(maxUpdate))
                     .errorStack(errors)

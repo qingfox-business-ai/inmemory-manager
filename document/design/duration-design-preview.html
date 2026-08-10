@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>执行时长 - 设计图预览</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #f5f7fa;
+      margin: 0;
+      padding: 24px;
+      color: #303133;
+    }
+    h1 { font-size: 22px; border-bottom: 2px solid #409eff; padding-bottom: 8px; }
+    h2 { font-size: 18px; margin-top: 32px; color: #409eff; }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .desc { color: #909399; font-size: 14px; margin-bottom: 12px; }
+    .mermaid { display: flex; justify-content: center; }
+  </style>
+</head>
+<body>
+  <h1>监控任务「执行时长」功能设计图</h1>
+
+  <h2>1. 执行时长计算逻辑</h2>
+  <div class="card">
+    <p class="desc">后端 buildStatisticsFromTask 中 duration 的判定与计算流程。</p>
+    <div class="mermaid">
+flowchart TD
+    A["getTaskMonitor(taskId)"] --> B["查询 Task"]
+    B --> C["selectDatabaseNow<br/>获取数据库当前时间 dbNow"]
+    C --> D["buildStatisticsFromTask(task, dbNow)"]
+    D --> E{"task.endTime<br/>是否为空?"}
+    E -- 有 endTime --> F["end = task.endTime"]
+    E -- 无 endTime --> G["end = dbNow<br/>(数据库当前时间)"]
+    F --> H{"task.startTime<br/>是否为空?"}
+    G --> H
+    H -- 有 startTime --> I["duration =<br/>Duration.between(start,end).toMillis()"]
+    H -- 无 startTime --> J["duration = 0"]
+    I --> K["返回 duration (毫秒)"]
+    J --> K
+    </div>
+  </div>
+
+  <h2>2. 数据流（轮询实时刷新）</h2>
+  <div class="card">
+    <p class="desc">前端每 10 秒轮询，运行中任务的执行时长会自动实时增长。</p>
+    <div class="mermaid">
+sequenceDiagram
+    participant U as 前端 TaskView
+    participant C as TaskMonitorController
+    participant S as TaskMonitorService
+    participant DB as PostgreSQL
+
+    loop 每 10 秒轮询（运行中任务）
+        U->>C: GET /api/task/monitor/{taskId}
+        C->>S: getTaskMonitor(taskId)
+        S->>DB: SELECT task
+        S->>DB: SELECT now()::timestamp
+        DB-->>S: dbNow
+        S->>S: 计算 duration<br/>endTime!=null ? endTime-start : dbNow-start
+        S-->>C: TaskMonitorDTO {statistics:{duration}}
+        C-->>U: ApiResponse
+        U->>U: formatDuration(ms) → "1天 02:30:15"
+    end
+    </div>
+  </div>
+
+  <h2>3. 概览区界面结构</h2>
+  <div class="card">
+    <p class="desc">监控弹窗概览区新增「执行时长」项（2 列布局）。</p>
+    <div class="mermaid">
+flowchart LR
+    subgraph Dialog["监控任务弹窗 - 概览区"]
+        direction TB
+        D["el-descriptions :column=2"]
+        D --> S1["状态: [tag]"]
+        D --> S2["更新时间: ..."]
+        D --> S3["开始时间: ..."]
+        D --> S4["结束时间: ... / -"]
+        D --> S5["执行时长: formatDuration<br/>🆕 新增"]
+    end
+
+    subgraph Rule["duration 取值规则"]
+        R1["endTime 非空 → endTime − startTime"]
+        R2["endTime 为空 → dbNow − startTime（实时增长）"]
+    end
+
+    S5 -.-> R1
+    S5 -.-> R2
+    </div>
+  </div>
+
+  <h2>4. duration 格式化规则</h2>
+  <div class="card">
+    <p class="desc">前端 formatDuration 函数将毫秒转为友好显示。</p>
+    <div class="mermaid">
+flowchart TD
+    M["duration (毫秒)"] --> C1{"ms <= 0 ?"}
+    C1 -- 是 --> O1["'-'"]
+    C1 -- 否 --> T["totalSec = ms / 1000"]
+    T --> D{"totalSec >= 86400 ?"}
+    D -- 是 --> F1["X天 HH:mm:ss<br/>例: 1天 02:30:15"]
+    D -- 否 --> F2["HH:mm:ss<br/>例: 02:30:15"]
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default', flowchart: { useMaxWidth: true } });
+  </script>
+</body>
+</html>

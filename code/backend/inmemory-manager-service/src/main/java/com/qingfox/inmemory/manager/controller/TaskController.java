@@ -3,6 +3,7 @@ package com.qingfox.inmemory.manager.controller;
 import com.qingfox.inmemory.manager.model.ApiResponse;
 import com.qingfox.inmemory.manager.model.dto.PageResult;
 import com.qingfox.inmemory.manager.model.dto.TaskDTO;
+import com.qingfox.inmemory.manager.model.dto.BatchDTO;
 import com.qingfox.inmemory.manager.model.dto.TaskListDTO;
 import com.qingfox.inmemory.manager.model.dto.TaskMonitorDTO;
 import com.qingfox.inmemory.manager.service.TaskMonitorService;
@@ -32,5 +33,10 @@ public class TaskController {
     @GetMapping("/{taskId}/monitor")
     public ApiResponse<TaskMonitorDTO> monitor(@PathVariable String taskId) {
         return ApiResponse.success(taskMonitorService.getTaskMonitor(taskId));
+    }
+
+    @GetMapping("/{taskId}/batches")
+    public ApiResponse<List<BatchDTO>> batches(@PathVariable String taskId) {
+        return ApiResponse.success(taskMonitorService.getTaskBatches(taskId));
     }
 }

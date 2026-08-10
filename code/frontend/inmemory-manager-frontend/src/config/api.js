@@ -14,7 +14,8 @@ export const API_URLS = {
   },
   task: {
     list: `${BASE_URL}/task/list`,
-    monitor: (taskId) => `${BASE_URL}/task/${taskId}/monitor`
+    monitor: (taskId) => `${BASE_URL}/task/${taskId}/monitor`,
+    batches: (taskId) => `${BASE_URL}/task/${taskId}/batches`
   },
   template: {
     list: `${BASE_URL}/template/list`,

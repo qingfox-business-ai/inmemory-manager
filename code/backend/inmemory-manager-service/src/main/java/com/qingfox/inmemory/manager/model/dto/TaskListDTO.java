@@ -18,4 +18,12 @@ public class TaskListDTO {
     private String outputCount;
     private String startTime;
     private String endTime;
+    private Long batchWait;
+    private Long batchRun;
+    private Long batchDone;
+    private Long batchFailure;
+    private Long queueWait;
+    private Long queueRun;
+    private Long queueDone;
+    private Long queueFailure;
 }

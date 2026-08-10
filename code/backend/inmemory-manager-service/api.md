@@ -166,6 +166,7 @@
       - startTime: string - 开始时间
       - endTime: string - 结束时间
       - nowTime: string - 当前时间
+      - duration: long - 执行时长(毫秒)，有endTime为endTime-startTime，无则为数据库当前时间-startTime
       - errorStack: array - 错误堆栈信息
     - executes: array - 执行明细列表
       - executeId: string - 执行ID
@@ -196,7 +197,8 @@
     - templateName: string - 模板名称
     - resolverId: string - 解析器ID
     - subResolverId: string - 子解析器ID
-  - statisticsExecuteId: string - 统计ID
+  - inputId: string - 输入统计ID
+  - outputId: string - 输出统计ID
     - createTime: string - 创建时间
     - updateTime: string - 更新时间
 
@@ -233,7 +235,8 @@
   - templateName: string - 模板名称（必填）
   - resolverId: string - 解析器ID
   - subResolverId: string - 子解析器ID
-  - statisticsExecuteId: string - 统计ID
+  - inputId: string - 输入统计ID
+  - outputId: string - 输出统计ID
   - customData: string - 定制数据
   - inputData: string - 输入数据
 - Response:
@@ -250,7 +253,8 @@
   - templateName: string - 模板名称
   - resolverId: string - 解析器ID
   - subResolverId: string - 子解析器ID
-  - statisticsExecuteId: string - 统计ID
+  - inputId: string - 输入统计ID
+  - outputId: string - 输出统计ID
   - customData: string - 定制数据
   - inputData: string - 输入数据
 - Response:

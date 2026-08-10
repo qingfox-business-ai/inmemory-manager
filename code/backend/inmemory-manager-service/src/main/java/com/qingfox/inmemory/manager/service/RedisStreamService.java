@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Range;
 import org.springframework.data.redis.connection.stream.PendingMessage;
 import org.springframework.data.redis.connection.stream.PendingMessages;
+import org.springframework.data.redis.connection.stream.StreamInfo;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -72,19 +73,53 @@ public class RedisStreamService {
         } catch (Exception e) {
             log.warn("main pending query failed: {}", e.getMessage());
         }
+        String lastDeliveredId = "0-0";
+        try {
+            StreamInfo.XInfoGroups groups = redisTemplate.opsForStream().groups(stream);
+            if (groups != null) {
+                for (StreamInfo.XInfoGroup g : groups) {
+                    if (group.equals(g.groupName())) {
+                        String lid = g.lastDeliveredId();
+                        if (lid != null) {
+                            lastDeliveredId = lid;
+                        }
+                        break;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("groups query failed: {}", e.getMessage());
+        }
         List<StreamMessageDTO> result = new ArrayList<>();
         for (var r : records) {
             String id = r.getId().getValue();
             var value = r.getValue();
-            boolean ack = !pendingIds.contains(id);
+            boolean inPending = pendingIds.contains(id);
+            String status;
+            if (inPending) {
+                status = "running";
+            } else if (compareStreamId(id, lastDeliveredId) > 0) {
+                status = "waiting";
+            } else {
+                status = "done";
+            }
             result.add(StreamMessageDTO.builder()
                     .id(id)
-                    .ack(ack)
-                    .status(ack ? "done" : "pending")
+                    .ack("done".equals(status))
+                    .status(status)
                     .attribute(parseAttribute(value.get("attribute")))
                     .build());
         }
         return result;
+    }
+
+    private int compareStreamId(String id1, String id2) {
+        String[] p1 = id1.split("-");
+        String[] p2 = id2.split("-");
+        long m1 = Long.parseLong(p1[0]); long s1 = Long.parseLong(p1[1]);
+        long m2 = Long.parseLong(p2[0]); long s2 = Long.parseLong(p2[1]);
+        int cmp = Long.compare(m1, m2);
+        return cmp != 0 ? cmp : Long.compare(s1, s2);
     }
 
     private List<StreamMessageDTO> pollDlq() {
@@ -120,16 +155,21 @@ public class RedisStreamService {
         return streamMessages;
     }
 
-    public PageResult<StreamMessageDTO> getStreamMessagesPage(int page, int size, String status, String search) {
+    public PageResult<StreamMessageDTO> getStreamMessagesPage(int page, int size, String status, String search, String taskId) {
         String lowerSearch = search == null ? "" : search.toLowerCase();
         List<StreamMessageDTO> filtered = new ArrayList<>();
         for (StreamMessageDTO m : streamMessages) {
+            if (taskId != null && !taskId.isEmpty()) {
+                Object tidObj = m.getAttribute() != null ? m.getAttribute().get("taskId") : null;
+                String tid = tidObj != null ? tidObj.toString() : "";
+                if (!taskId.equals(tid)) continue;
+            }
             if (status != null && !status.isEmpty() && !status.equals(m.getStatus())) continue;
             if (!lowerSearch.isEmpty()) {
                 String id = m.getId() != null ? m.getId() : "";
                 Object taskIdObj = m.getAttribute() != null ? m.getAttribute().get("taskId") : null;
-                String taskId = taskIdObj != null ? taskIdObj.toString() : "";
-                if (!id.toLowerCase().contains(lowerSearch) && !taskId.toLowerCase().contains(lowerSearch)) continue;
+                String tid = taskIdObj != null ? taskIdObj.toString() : "";
+                if (!id.toLowerCase().contains(lowerSearch) && !tid.toLowerCase().contains(lowerSearch)) continue;
             }
             filtered.add(m);
         }

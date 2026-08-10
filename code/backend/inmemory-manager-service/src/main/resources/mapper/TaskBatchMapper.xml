@@ -46,4 +46,10 @@
         GROUP BY status
     </select>
 
+    <select id="selectMaxEndTimeByTaskId" resultType="java.time.LocalDateTime">
+        SELECT MAX(end_time)
+        FROM bill.inmemory_task_batch
+        WHERE task_id = #{taskId}
+    </select>
+
 </mapper>

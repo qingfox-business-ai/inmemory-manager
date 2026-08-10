@@ -16,7 +16,8 @@ public class ExecuteTemplate {
     private String templateName;
     private String resolverId;
     private String subResolverId;
-    private String statisticsExecuteId;
+    private String inputId;
+    private String outputId;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     private String customData;

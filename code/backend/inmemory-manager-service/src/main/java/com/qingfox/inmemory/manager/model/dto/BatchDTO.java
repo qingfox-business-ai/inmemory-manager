@@ -9,14 +9,12 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ExecuteTemplateDTO {
+public class BatchDTO {
 
-    private Integer id;
-    private String templateName;
-    private String resolverId;
-    private String subResolverId;
-    private String inputId;
-    private String outputId;
-    private String createTime;
+    private String batchId;
+    private Integer status;
     private String updateTime;
+    private String errorStack;
+    private String startTime;
+    private String endTime;
 }

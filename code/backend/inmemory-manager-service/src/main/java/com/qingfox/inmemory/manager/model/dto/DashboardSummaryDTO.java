@@ -41,6 +41,7 @@ public class DashboardSummaryDTO {
     public static class TaskSummary {
         private int success;
         private int waiting;
+        private int running;
         private int failed;
         private String periodStart;
         private String periodEnd;

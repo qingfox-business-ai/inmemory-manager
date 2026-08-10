@@ -20,12 +20,6 @@ const routes = [
         meta: { title: '客户端监控', icon: 'Monitor' }
       },
       {
-        path: 'queue',
-        name: 'Queue',
-        component: () => import('@/views/QueueView.vue'),
-        meta: { title: '消息监控', icon: 'List' }
-      },
-      {
         path: 'task',
         name: 'Task',
         component: () => import('@/views/TaskView.vue'),

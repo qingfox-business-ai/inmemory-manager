@@ -21,5 +21,6 @@ public class TaskStatisticsDTO {
     private String startTime;
     private String endTime;
     private String nowTime;
+    private long duration;
     private List<String> errorStack;
 }

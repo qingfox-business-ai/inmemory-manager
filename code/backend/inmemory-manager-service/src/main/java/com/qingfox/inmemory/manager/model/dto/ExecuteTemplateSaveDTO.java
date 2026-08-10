@@ -15,7 +15,8 @@ public class ExecuteTemplateSaveDTO {
     private String templateName;
     private String resolverId;
     private String subResolverId;
-    private String statisticsExecuteId;
+    private String inputId;
+    private String outputId;
     private String customData;
     private String inputData;
 }

@@ -6,7 +6,6 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 @Data
 @TableName(value = "inmemory_task", schema = "bill")
@@ -18,7 +17,7 @@ public class Task {
     private Short status;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
-    private LocalTime updateTime;
+    private LocalDateTime updateTime;
     private Long inputCount;
     private String outputCount;
     private String inputId;
@@ -28,4 +27,8 @@ public class Task {
     private Long batchRun;
     private Long batchDone;
     private Long batchFailure;
+    private Long queueWait;
+    private Long queueRun;
+    private Long queueDone;
+    private Long queueFailure;
 }

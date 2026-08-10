@@ -50,8 +50,11 @@
         <el-form-item label="子解析器ID" prop="subResolverId">
           <el-input v-model="form.subResolverId" placeholder="请输入子解析器ID" />
         </el-form-item>
-        <el-form-item label="统计ID" prop="statisticsExecuteId">
-          <el-input v-model="form.statisticsExecuteId" placeholder="请输入统计ID" />
+        <el-form-item label="输入ID" prop="inputId">
+          <el-input v-model="form.inputId" placeholder="请输入输入统计ID" />
+        </el-form-item>
+        <el-form-item label="输出ID" prop="outputId">
+          <el-input v-model="form.outputId" placeholder="请输入输出统计ID" />
         </el-form-item>
         <el-form-item label="定制数据" prop="customData">
           <JsonEditor v-model="form.customData" height="240px" />
@@ -98,7 +101,8 @@ const defaultForm = () => ({
   templateName: '',
   resolverId: '',
   subResolverId: '',
-  statisticsExecuteId: '',
+  inputId: '',
+  outputId: '',
   customData: '',
   inputData: ''
 })
@@ -161,7 +165,8 @@ const handleEdit = (row) => {
     templateName: row.templateName || '',
     resolverId: row.resolverId || '',
     subResolverId: row.subResolverId || '',
-    statisticsExecuteId: row.statisticsExecuteId || '',
+    inputId: row.inputId || '',
+    outputId: row.outputId || '',
     customData: '',
     inputData: ''
   })
@@ -206,7 +211,8 @@ const handleSubmit = async () => {
       templateName: form.templateName,
       resolverId: form.resolverId,
       subResolverId: form.subResolverId,
-      statisticsExecuteId: form.statisticsExecuteId,
+      inputId: form.inputId,
+      outputId: form.outputId,
       customData: form.customData,
       inputData: form.inputData
     }

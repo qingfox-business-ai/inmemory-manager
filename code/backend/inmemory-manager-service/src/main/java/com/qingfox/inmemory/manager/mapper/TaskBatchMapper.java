@@ -21,4 +21,6 @@ public interface TaskBatchMapper extends BaseMapper<TaskBatch> {
     LocalDateTime selectDatabaseNow();
 
     List<Map<String, Object>> selectBatchStatusCountByTaskId(@Param("taskId") String taskId);
+
+    LocalDateTime selectMaxEndTimeByTaskId(@Param("taskId") String taskId);
 }
