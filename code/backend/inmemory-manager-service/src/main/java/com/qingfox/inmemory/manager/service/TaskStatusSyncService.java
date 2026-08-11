@@ -60,7 +60,7 @@ public class TaskStatusSyncService {
                         newStatus = 3;
                         errorStack = "Task timeout exception: no batches created within 30 seconds";
                     } else {
-                        newStatus = 1;
+                        newStatus = 0;
                     }
                 } else if (run + wait > 0) {
                     newStatus = 1;
