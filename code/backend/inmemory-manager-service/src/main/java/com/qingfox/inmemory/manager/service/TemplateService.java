@@ -5,10 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qingfox.inmemory.manager.entity.ExecuteTemplate;
 import com.qingfox.inmemory.manager.entity.Task;
 import com.qingfox.inmemory.manager.mapper.ExecuteTemplateMapper;
+import com.qingfox.inmemory.manager.mapper.TaskBatchMapper;
 import com.qingfox.inmemory.manager.mapper.TaskMapper;
 import com.qingfox.inmemory.manager.model.ApiResponse;
 import com.qingfox.inmemory.manager.model.dto.ExecuteTemplateDTO;
 import com.qingfox.inmemory.manager.model.dto.ExecuteTemplateSaveDTO;
+import com.qingfox.inmemory.manager.model.dto.TemplateExecuteDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,7 @@ public class TemplateService {
 
     private final ExecuteTemplateMapper executeTemplateMapper;
     private final TaskMapper taskMapper;
+    private final TaskBatchMapper taskBatchMapper;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -88,29 +91,39 @@ public class TemplateService {
         executeTemplateMapper.deleteById(id);
     }
 
-    @SuppressWarnings("unchecked")
     public ApiResponse<Map<String, Object>> execute(Integer id) {
         ExecuteTemplate template = executeTemplateMapper.selectById(id);
         if (template == null) {
             return ApiResponse.error(404, "模板不存在");
         }
+        return doExecute(template.getTemplateName(), template.getResolverId(),
+                template.getSubResolverId(), template.getInputId(), template.getOutputId(),
+                template.getCustomData(), template.getInputData());
+    }
 
+    public ApiResponse<Map<String, Object>> executeWithParams(TemplateExecuteDTO dto) {
+        return doExecute(dto.getTemplateName(), dto.getResolverId(), dto.getSubResolverId(),
+                dto.getInputId(), dto.getOutputId(), dto.getCustomData(), dto.getInputData());
+    }
+
+    @SuppressWarnings("unchecked")
+    private ApiResponse<Map<String, Object>> doExecute(String templateName, String resolverId,
+            String subResolverId, String inputId, String outputId, String customData, String inputData) {
         String taskId = "-";
         String errorMsg = null;
         boolean success = false;
 
         try {
             Map<String, Object> body = new HashMap<>();
-            body.put("resolverId", template.getResolverId());
-            String sub = template.getSubResolverId();
-            List<String> subResolverIdList = (sub != null && !sub.trim().isEmpty())
-                    ? Arrays.asList(sub.split(","))
+            body.put("resolverId", resolverId);
+            List<String> subResolverIdList = (subResolverId != null && !subResolverId.trim().isEmpty())
+                    ? Arrays.asList(subResolverId.split(","))
                     : Collections.emptyList();
             body.put("subResolverId", subResolverIdList);
             body.put("subResolverIdList", subResolverIdList);
             body.put("async", true);
-            body.put("inputDataListMap", parseJsonObject(template.getInputData()));
-            body.put("customData", parseJsonObject(template.getCustomData()));
+            body.put("inputDataListMap", parseJsonObject(inputData));
+            body.put("customData", parseJsonObject(customData));
 
             String url = executeServiceUrl + "/api/inmemory/executeResolver";
             Map<String, Object> resp = restTemplate.postForObject(url, body, Map.class);
@@ -130,15 +143,16 @@ public class TemplateService {
 
         Task task = new Task();
         task.setTaskId(taskId);
-        task.setInputId(template.getInputId());
-        task.setOutputId(template.getOutputId());
-        task.setTaskMark(template.getTemplateName());
+        task.setInputId(inputId);
+        task.setOutputId(outputId);
+        task.setTaskMark(templateName);
         task.setStatus(success ? (short) 0 : (short) 3);
         task.setErrorStack(!success ? errorMsg : null);
         LocalDateTime now = LocalDateTime.now();
-        task.setStartTime(now);
+        LocalDateTime dbNow = taskBatchMapper.selectDatabaseNow();
+        task.setStartTime(dbNow);
         task.setEndTime(now);
-        task.setUpdateTime(now);
+        task.setUpdateTime(dbNow);
         taskMapper.insert(task);
 
         if (success) {

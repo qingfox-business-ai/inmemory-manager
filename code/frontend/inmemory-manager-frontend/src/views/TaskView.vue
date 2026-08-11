@@ -25,6 +25,9 @@
             />
             <el-button type="primary" :icon="Search" @click="handleSearch" style="margin-left: 12px;">查询</el-button>
           </div>
+          <div class="toolbar-right" style="margin-left: auto;">
+            <el-button type="success" :icon="Plus" @click="openExecDialog">执行</el-button>
+          </div>
         </div>
       </template>
 
@@ -208,6 +211,54 @@
       </template>
     </el-dialog>
 
+    <!-- 执行任务对话框 -->
+    <el-dialog v-model="execDialogVisible" title="执行任务" width="65%" top="5vh" @close="resetExecForm">
+      <el-form ref="execFormRef" :model="execForm" label-width="100px">
+        <el-form-item label="选择模板">
+          <el-select
+            v-model="execTemplateId"
+            placeholder="选择已有模板回填"
+            filterable
+            clearable
+            style="width: 100%"
+            @change="onTemplateSelect"
+          >
+            <el-option
+              v-for="t in templateOptions"
+              :key="t.id"
+              :label="t.templateName"
+              :value="t.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="模板名称" prop="templateName">
+          <el-input v-model="execForm.templateName" placeholder="请输入模板名称" />
+        </el-form-item>
+        <el-form-item label="解析器ID" prop="resolverId">
+          <el-input v-model="execForm.resolverId" placeholder="请输入解析器ID" />
+        </el-form-item>
+        <el-form-item label="子解析器ID" prop="subResolverId">
+          <el-input v-model="execForm.subResolverId" placeholder="请输入子解析器ID（逗号分隔）" />
+        </el-form-item>
+        <el-form-item label="输入ID" prop="inputId">
+          <el-input v-model="execForm.inputId" placeholder="请输入输入统计ID" />
+        </el-form-item>
+        <el-form-item label="输出ID" prop="outputId">
+          <el-input v-model="execForm.outputId" placeholder="请输入输出统计ID" />
+        </el-form-item>
+        <el-form-item label="定制数据" prop="customData">
+          <JsonEditor v-model="execForm.customData" height="200px" />
+        </el-form-item>
+        <el-form-item label="输入数据" prop="inputData">
+          <JsonEditor v-model="execForm.inputData" height="200px" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="execDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="execSubmitting" @click="handleExecSubmit">确认执行</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="batchDialogVisible" :title="'批次列表 - ' + (currentRow ? currentRow.taskId : '')" width="900px" top="5vh">
       <el-table :data="batchList" v-loading="batchLoading" border style="width: 100%" max-height="500">
         <el-table-column prop="batchId" label="批次ID" min-width="140" />
@@ -275,9 +326,19 @@
 
 <script setup>
 import { ref, computed, reactive, onMounted, onBeforeUnmount } from 'vue'
-import { Refresh, Search, CopyDocument } from '@element-plus/icons-vue'
+import { Refresh, Search, CopyDocument, Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getTaskList, getTaskMonitor, getTaskBatches, getStreamMessages } from '@/api'
+import JsonEditor from '@/components/JsonEditor.vue'
+import {
+  getTaskList,
+  getTaskMonitor,
+  getTaskBatches,
+  getStreamMessages,
+  getTemplateList,
+  getTemplateCustomData,
+  getTemplateInputData,
+  executeTemplateWithParams
+} from '@/api'
 
 const statusFilter = ref('')
 const taskIdFilter = ref('')
@@ -576,6 +637,86 @@ const handlePageChange = () => {
 
 const handleRefresh = () => {
   fetchData()
+}
+
+const execDialogVisible = ref(false)
+const execSubmitting = ref(false)
+const execFormRef = ref(null)
+const execTemplateId = ref(null)
+const templateOptions = ref([])
+const defaultExecForm = () => ({
+  templateName: '',
+  resolverId: '',
+  subResolverId: '',
+  inputId: '',
+  outputId: '',
+  customData: '',
+  inputData: ''
+})
+const execForm = reactive(defaultExecForm())
+
+const resetExecForm = () => {
+  execTemplateId.value = null
+  Object.assign(execForm, defaultExecForm())
+}
+
+const openExecDialog = async () => {
+  resetExecForm()
+  execDialogVisible.value = true
+  if (templateOptions.value.length === 0) {
+    try {
+      const res = await getTemplateList()
+      if (res.code === 200) {
+        templateOptions.value = res.data || []
+      }
+    } catch (e) {
+      console.error('加载模板列表失败', e)
+    }
+  }
+}
+
+const onTemplateSelect = (id) => {
+  const t = templateOptions.value.find(item => item.id === id)
+  if (!t) return
+  execForm.templateName = t.templateName || ''
+  execForm.resolverId = t.resolverId || ''
+  execForm.subResolverId = t.subResolverId || ''
+  execForm.inputId = t.inputId || ''
+  execForm.outputId = t.outputId || ''
+  execForm.customData = ''
+  execForm.inputData = ''
+  loadTemplateDetail(t.id)
+}
+
+const loadTemplateDetail = async (id) => {
+  try {
+    const [customRes, inputRes] = await Promise.all([
+      getTemplateCustomData(id),
+      getTemplateInputData(id)
+    ])
+    if (customRes.code === 200) execForm.customData = customRes.data || ''
+    if (inputRes.code === 200) execForm.inputData = inputRes.data || ''
+  } catch (e) {
+    console.error('加载模板数据失败', e)
+  }
+}
+
+const handleExecSubmit = async () => {
+  execSubmitting.value = true
+  try {
+    const res = await executeTemplateWithParams({ ...execForm })
+    if (res.code === 200) {
+      ElMessage.success('执行成功')
+      execDialogVisible.value = false
+      fetchData()
+    } else {
+      ElMessage.error(res.message || '执行失败')
+    }
+  } catch (e) {
+    ElMessage.error('执行失败')
+  } finally {
+    execSubmitting.value = false
+  }
 }
 
 onMounted(() => {

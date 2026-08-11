@@ -3,6 +3,7 @@ package com.qingfox.inmemory.manager.controller;
 import com.qingfox.inmemory.manager.model.ApiResponse;
 import com.qingfox.inmemory.manager.model.dto.ExecuteTemplateDTO;
 import com.qingfox.inmemory.manager.model.dto.ExecuteTemplateSaveDTO;
+import com.qingfox.inmemory.manager.model.dto.TemplateExecuteDTO;
 import com.qingfox.inmemory.manager.service.TemplateService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -53,5 +54,10 @@ public class TemplateController {
     @PostMapping("/{id}/execute")
     public ApiResponse<Map<String, Object>> execute(@PathVariable Integer id) {
         return templateService.execute(id);
+    }
+
+    @PostMapping("/execute")
+    public ApiResponse<Map<String, Object>> executeWithParams(@RequestBody TemplateExecuteDTO dto) {
+        return templateService.executeWithParams(dto);
     }
 }

@@ -284,3 +284,22 @@
   - message: string - 响应消息（失败时为错误信息）
   - data: object - 执行结果（成功时返回）
     - taskId: string - 任务ID（失败时无此字段）
+
+### 按参数执行
+
+- URL: /inmemory-manager/inmemory-manager-service/api/template/execute
+- Method: POST
+- Description: 按传入参数直接发起执行（不依赖模板ID），参数与新增模板表单一致，结果记录到inmemory_task
+- Request Body:
+  - templateName: string - 模板名称（记录为task_mark）
+  - resolverId: string - 解析器ID
+  - subResolverId: string - 子解析器ID（逗号分隔）
+  - inputId: string - 输入统计ID
+  - outputId: string - 输出统计ID
+  - customData: string - 定制数据(JSON字符串)
+  - inputData: string - 输入数据(JSON字符串)
+- Response:
+  - code: int - 响应状态码（200成功，500失败）
+  - message: string - 响应消息（失败时为错误信息）
+  - data: object - 执行结果（成功时返回）
+    - taskId: string - 任务ID

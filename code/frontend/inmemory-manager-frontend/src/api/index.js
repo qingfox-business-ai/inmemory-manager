@@ -61,6 +61,10 @@ export function executeTemplate(id) {
   return request.post(API_URLS.template.execute(id))
 }
 
+export function executeTemplateWithParams(data) {
+  return request.post(API_URLS.template.executeWithParams, data)
+}
+
 export function getStreamMessages(params) {
   return request.get(API_URLS.stream.messages, { params })
 }

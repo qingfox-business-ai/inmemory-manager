@@ -3,7 +3,9 @@ package com.qingfox.inmemory.manager.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.qingfox.inmemory.manager.entity.Task;
+import com.qingfox.inmemory.manager.entity.TaskExecute;
 import com.qingfox.inmemory.manager.mapper.TaskBatchMapper;
+import com.qingfox.inmemory.manager.mapper.TaskExecuteMapper;
 import com.qingfox.inmemory.manager.mapper.TaskMapper;
 import com.qingfox.inmemory.manager.model.dto.StreamMessageDTO;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ public class TaskStatusSyncService {
 
     private final TaskMapper taskMapper;
     private final TaskBatchMapper taskBatchMapper;
+    private final TaskExecuteMapper taskExecuteMapper;
     private final RedisStreamService redisStreamService;
 
     @Scheduled(fixedDelay = 10000)
@@ -51,14 +54,29 @@ public class TaskStatusSyncService {
                         else if (s == 3) failure = c;
                     }
                 }
+                List<TaskExecute> executes = taskExecuteMapper.selectExecutesByTaskId(task.getTaskId());
+                long inputTotal = 0;
+                long outputTotal = 0;
+                if (executes != null) {
+                    for (TaskExecute e : executes) {
+                        if (task.getInputId() != null && task.getInputId().equals(e.getExecuteId())) {
+                            inputTotal += e.getInCount() != null ? e.getInCount() : 0;
+                        }
+                        if (task.getOutputId() != null && task.getOutputId().equals(e.getExecuteId())) {
+                            outputTotal += e.getOutCount() != null ? e.getOutCount() : 0;
+                        }
+                    }
+                }
                 long totalBatches = wait + run + done + failure;
                 String errorStack = null;
+                boolean timedOut = false;
                 int newStatus;
                 if (totalBatches == 0) {
                     if (task.getStartTime() != null && dbNow != null
                             && Duration.between(task.getStartTime(), dbNow).getSeconds() > 30) {
                         newStatus = 3;
                         errorStack = "Task timeout exception: no batches created within 30 seconds";
+                        timedOut = true;
                     } else {
                         newStatus = 0;
                     }
@@ -80,14 +98,20 @@ public class TaskStatusSyncService {
                         .set(Task::getQueueRun, qs[1])
                         .set(Task::getQueueDone, qs[2])
                         .set(Task::getQueueFailure, qs[3])
+                        .set(Task::getInputCount, inputTotal)
+                        .set(Task::getOutputCount, String.valueOf(outputTotal))
                         .set(Task::getStatus, (short) newStatus);
                 if (errorStack != null) {
                     update.set(Task::getErrorStack, errorStack);
                 }
                 if (newStatus == 2 || newStatus == 3) {
-                    java.time.LocalDateTime maxEnd = taskBatchMapper.selectMaxEndTimeByTaskId(task.getTaskId());
-                    if (maxEnd != null) {
-                        update.set(Task::getEndTime, maxEnd);
+                    if (timedOut) {
+                        update.set(Task::getEndTime, dbNow);
+                    } else {
+                        java.time.LocalDateTime maxEnd = taskBatchMapper.selectMaxEndTimeByTaskId(task.getTaskId());
+                        if (maxEnd != null) {
+                            update.set(Task::getEndTime, maxEnd);
+                        }
                     }
                 }
                 taskMapper.update(null, update);

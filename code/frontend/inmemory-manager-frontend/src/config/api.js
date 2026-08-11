@@ -24,7 +24,8 @@ export const API_URLS = {
     add: `${BASE_URL}/template`,
     update: `${BASE_URL}/template`,
     delete: (id) => `${BASE_URL}/template/${id}`,
-    execute: (id) => `${BASE_URL}/template/${id}/execute`
+    execute: (id) => `${BASE_URL}/template/${id}/execute`,
+    executeWithParams: `${BASE_URL}/template/execute`
   },
   stream: {
     messages: `${BASE_URL}/stream/messages`
