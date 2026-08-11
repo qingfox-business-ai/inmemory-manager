@@ -41,10 +41,19 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="taskMark" label="任务备注" min-width="160" />
+        <el-table-column prop="taskMark" label="任务备注" min-width="160" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="120" align="center">
           <template #default="{ row }">
-            <el-tag :type="statusTagType(row.status)" effect="light">
+            <el-tag
+              v-if="row.status === 3 && row.errorStack"
+              type="danger"
+              effect="light"
+              class="status-fail-clickable"
+              @click="showErrorStack(row)"
+            >
+              {{ statusLabel(row.status) }}
+            </el-tag>
+            <el-tag v-else :type="statusTagType(row.status)" effect="light">
               {{ statusLabel(row.status) }}
             </el-tag>
           </template>
@@ -267,7 +276,7 @@
 <script setup>
 import { ref, computed, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { Refresh, Search, CopyDocument } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTaskList, getTaskMonitor, getTaskBatches, getStreamMessages } from '@/api'
 
 const statusFilter = ref('')
@@ -372,6 +381,14 @@ const statusTagType = (status) => {
 const statusLabel = (status) => {
   const map = { 0: '等待', 1: '执行中', 2: '执行成功', 3: '执行失败' }
   return map[status] || status
+}
+
+const showErrorStack = (row) => {
+  ElMessageBox.alert(row.errorStack || '无错误信息', '执行失败详情', {
+    confirmButtonText: '关闭',
+    customClass: 'error-stack-alert',
+    dangerouslyUseHTMLString: false
+  }).catch(() => {})
 }
 
 const formatDuration = (ms) => {
@@ -675,6 +692,14 @@ onBeforeUnmount(() => {
 
 .error-clickable:hover {
   opacity: 0.75;
+}
+
+.status-fail-clickable {
+  cursor: pointer;
+}
+
+.status-fail-clickable:hover {
+  opacity: 0.8;
 }
 
 .error-row {

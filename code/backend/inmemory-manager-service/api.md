@@ -271,3 +271,16 @@
 - Response:
   - code: int - 响应状态码
   - message: string - 响应消息
+
+### 执行模板
+
+- URL: /inmemory-manager/inmemory-manager-service/api/template/{id}/execute
+- Method: POST
+- Description: 按模板发起执行请求，后端转发到执行服务(inmemory.execute.service+/api/inmemory/executeResolver)，并将结果记录到inmemory_task
+- Request Parameters:
+  - id: int - 模板ID（路径参数）
+- Response:
+  - code: int - 响应状态码（200成功，500失败）
+  - message: string - 响应消息（失败时为错误信息）
+  - data: object - 执行结果（成功时返回）
+    - taskId: string - 任务ID（失败时无此字段）

@@ -116,6 +116,7 @@ public class TaskMonitorService {
                 .taskId(t.getTaskId())
                 .taskMark(t.getTaskMark())
                 .status(t.getStatus() != null ? t.getStatus().intValue() : null)
+                .errorStack(t.getErrorStack())
                 .inputCount(t.getInputCount())
                 .outputCount(t.getOutputCount())
                 .startTime(formatTimestamp(t.getStartTime()))

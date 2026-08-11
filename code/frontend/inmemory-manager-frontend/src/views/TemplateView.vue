@@ -13,16 +13,17 @@
       </template>
 
       <el-table :data="tableData" v-loading="loading" style="width: 100%" max-height="600" border stripe>
-        <el-table-column prop="templateName" label="模板名称" min-width="180" />
-        <el-table-column prop="resolverId" label="解析器ID" min-width="150" />
-        <el-table-column prop="subResolverId" label="子解析器ID" min-width="150" />
-        <el-table-column prop="createTime" label="创建时间" min-width="170" />
-        <el-table-column prop="updateTime" label="更新时间" min-width="170" />
-        <el-table-column label="操作" width="420" fixed="right">
+        <el-table-column prop="templateName" label="模板名称" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="resolverId" label="解析器ID" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="subResolverId" label="子解析器ID" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="createTime" label="创建时间" min-width="170" show-overflow-tooltip />
+        <el-table-column prop="updateTime" label="更新时间" min-width="170" show-overflow-tooltip />
+        <el-table-column label="操作" width="480" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="viewData(row, 'custom')">查看定制数据</el-button>
             <el-button size="small" @click="viewData(row, 'input')">查看输入数据</el-button>
             <el-button size="small" type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button size="small" type="warning" :loading="executingId === row.id" @click="handleExecute(row)">执行</el-button>
             <el-popconfirm title="确认删除该模板？" @confirm="handleDelete(row)">
               <template #reference>
                 <el-button size="small" type="danger">删除</el-button>
@@ -82,7 +83,8 @@ import {
   getTemplateInputData,
   addTemplate,
   updateTemplate,
-  deleteTemplate
+  deleteTemplate,
+  executeTemplate
 } from '@/api'
 
 const tableData = ref([])
@@ -242,6 +244,23 @@ const handleDelete = async (row) => {
     }
   } catch (e) {
     ElMessage.error('删除失败')
+  }
+}
+
+const executingId = ref(null)
+const handleExecute = async (row) => {
+  executingId.value = row.id
+  try {
+    const res = await executeTemplate(row.id)
+    if (res.code === 200) {
+      ElMessage.success('执行成功')
+    } else {
+      ElMessage.error(res.message || '执行失败')
+    }
+  } catch (e) {
+    ElMessage.error('执行失败')
+  } finally {
+    executingId.value = null
   }
 }
 

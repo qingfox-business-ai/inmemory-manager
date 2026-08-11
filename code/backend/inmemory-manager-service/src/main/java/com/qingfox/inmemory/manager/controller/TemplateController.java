@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/template")
@@ -47,5 +48,10 @@ public class TemplateController {
     public ApiResponse<Void> delete(@PathVariable Integer id) {
         templateService.delete(id);
         return ApiResponse.success(null);
+    }
+
+    @PostMapping("/{id}/execute")
+    public ApiResponse<Map<String, Object>> execute(@PathVariable Integer id) {
+        return templateService.execute(id);
     }
 }

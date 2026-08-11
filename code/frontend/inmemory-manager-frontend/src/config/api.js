@@ -23,7 +23,8 @@ export const API_URLS = {
     inputData: (id) => `${BASE_URL}/template/${id}/inputData`,
     add: `${BASE_URL}/template`,
     update: `${BASE_URL}/template`,
-    delete: (id) => `${BASE_URL}/template/${id}`
+    delete: (id) => `${BASE_URL}/template/${id}`,
+    execute: (id) => `${BASE_URL}/template/${id}/execute`
   },
   stream: {
     messages: `${BASE_URL}/stream/messages`

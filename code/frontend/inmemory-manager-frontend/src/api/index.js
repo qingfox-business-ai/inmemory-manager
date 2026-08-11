@@ -57,6 +57,10 @@ export function deleteTemplate(id) {
   return request.delete(API_URLS.template.delete(id))
 }
 
+export function executeTemplate(id) {
+  return request.post(API_URLS.template.execute(id))
+}
+
 export function getStreamMessages(params) {
   return request.get(API_URLS.stream.messages, { params })
 }

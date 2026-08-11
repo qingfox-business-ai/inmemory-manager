@@ -14,6 +14,7 @@ public class TaskListDTO {
     private String taskId;
     private String taskMark;
     private Integer status;
+    private String errorStack;
     private Long inputCount;
     private String outputCount;
     private String startTime;

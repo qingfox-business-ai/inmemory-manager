@@ -23,6 +23,7 @@ public class Task {
     private String inputId;
     private String outputId;
     private String taskMark;
+    private String errorStack;
     private Long batchWait;
     private Long batchRun;
     private Long batchDone;

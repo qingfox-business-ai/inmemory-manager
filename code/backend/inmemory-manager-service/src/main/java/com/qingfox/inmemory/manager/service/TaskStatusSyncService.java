@@ -11,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +35,7 @@ public class TaskStatusSyncService {
                 return;
             }
             Map<String, long[]> queueStats = buildQueueStats();
+            LocalDateTime dbNow = taskBatchMapper.selectDatabaseNow();
             for (Task task : tasks) {
                 List<Map<String, Object>> counts = taskBatchMapper.selectBatchStatusCountByTaskId(task.getTaskId());
                 long wait = 0, run = 0, done = 0, failure = 0;
@@ -48,8 +51,18 @@ public class TaskStatusSyncService {
                         else if (s == 3) failure = c;
                     }
                 }
+                long totalBatches = wait + run + done + failure;
+                String errorStack = null;
                 int newStatus;
-                if (run + wait > 0) {
+                if (totalBatches == 0) {
+                    if (task.getStartTime() != null && dbNow != null
+                            && Duration.between(task.getStartTime(), dbNow).getSeconds() > 30) {
+                        newStatus = 3;
+                        errorStack = "Task timeout exception: no batches created within 30 seconds";
+                    } else {
+                        newStatus = 1;
+                    }
+                } else if (run + wait > 0) {
                     newStatus = 1;
                 } else if (failure > 0) {
                     newStatus = 3;
@@ -68,6 +81,9 @@ public class TaskStatusSyncService {
                         .set(Task::getQueueDone, qs[2])
                         .set(Task::getQueueFailure, qs[3])
                         .set(Task::getStatus, (short) newStatus);
+                if (errorStack != null) {
+                    update.set(Task::getErrorStack, errorStack);
+                }
                 if (newStatus == 2 || newStatus == 3) {
                     java.time.LocalDateTime maxEnd = taskBatchMapper.selectMaxEndTimeByTaskId(task.getTaskId());
                     if (maxEnd != null) {
