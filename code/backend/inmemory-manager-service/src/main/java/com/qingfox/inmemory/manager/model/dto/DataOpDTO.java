@@ -5,17 +5,18 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Map;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class StreamMessageDTO {
+public class DataOpDTO {
 
-    private String id;
-    private Boolean ack;
-    private String status;
-    private Map<String, Object> attribute;
+    private Long id;
+    private String opType;
+    private String opParameter;
+    private String opResult;
+    private Integer status;
+    private String startTime;
+    private String endTime;
     private String errorStack;
 }

@@ -150,7 +150,6 @@ public class TemplateService {
         task.setErrorStack(!success ? errorMsg : null);
         LocalDateTime dbNow = taskBatchMapper.selectDatabaseNow();
         task.setStartTime(dbNow);
-        task.setEndTime(dbNow);
         task.setUpdateTime(dbNow);
         taskMapper.insert(task);
 

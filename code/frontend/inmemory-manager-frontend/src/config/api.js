@@ -29,5 +29,9 @@ export const API_URLS = {
   },
   stream: {
     messages: `${BASE_URL}/stream/messages`
+  },
+  dataop: {
+    list: `${BASE_URL}/dataop/list`,
+    execute: `${BASE_URL}/dataop/execute`
   }
 }

@@ -14,6 +14,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -33,7 +34,7 @@ public class TaskStatusSyncService {
     public void syncTaskStatus() {
         try {
             List<Task> tasks = taskMapper.selectList(new LambdaQueryWrapper<Task>()
-                    .notIn(Task::getStatus, (short) 2, (short) 3));
+                    .ge(Task::getStartTime, LocalDate.now().minusDays(30).atStartOfDay()));
             if (tasks == null || tasks.isEmpty()) {
                 return;
             }
@@ -87,7 +88,15 @@ public class TaskStatusSyncService {
                 } else {
                     newStatus = 2;
                 }
+                Short curStatus = task.getStatus();
+                boolean isFinal = curStatus != null && (curStatus == 2 || curStatus == 3);
+                int finalStatus = isFinal ? curStatus.intValue() : newStatus;
                 long[] qs = queueStats.getOrDefault(task.getTaskId(), new long[4]);
+                boolean interrupted = !isFinal && qs[3] >= 0 && (qs[0] + qs[1] + qs[2]) == 0;
+                if (interrupted) {
+                    finalStatus = 3;
+                    errorStack = "Task interrupted";
+                }
                 LambdaUpdateWrapper<Task> update = new LambdaUpdateWrapper<Task>()
                         .eq(Task::getId, task.getId())
                         .set(Task::getBatchWait, wait)
@@ -99,13 +108,13 @@ public class TaskStatusSyncService {
                         .set(Task::getQueueDone, qs[2])
                         .set(Task::getQueueFailure, qs[3])
                         .set(Task::getInputCount, inputTotal)
-                        .set(Task::getOutputCount, String.valueOf(outputTotal))
-                        .set(Task::getStatus, (short) newStatus);
+                        .set(Task::getOutputCount, outputTotal)
+                        .set(Task::getStatus, (short) finalStatus);
                 if (errorStack != null) {
                     update.set(Task::getErrorStack, errorStack);
                 }
-                if (newStatus == 2 || newStatus == 3) {
-                    if (timedOut) {
+                if ((finalStatus == 2 || finalStatus == 3) && task.getEndTime() == null) {
+                    if (timedOut || interrupted) {
                         update.set(Task::getEndTime, dbNow);
                     } else {
                         java.time.LocalDateTime maxEnd = taskBatchMapper.selectMaxEndTimeByTaskId(task.getTaskId());

@@ -30,6 +30,12 @@ const routes = [
         name: 'Template',
         component: () => import('@/views/TemplateView.vue'),
         meta: { title: '模板管理', icon: 'Document' }
+      },
+      {
+        path: 'dataop',
+        name: 'DataOp',
+        component: () => import('@/views/DataOpView.vue'),
+        meta: { title: '数据操作', icon: 'Operation' }
       }
     ]
   }

@@ -137,6 +137,7 @@ public class RedisStreamService {
                     .ack(false)
                     .status("failed")
                     .attribute(parseAttribute(value.get("attribute")))
+                    .errorStack(value.get("errorStack") != null ? value.get("errorStack").toString() : null)
                     .build());
         }
         return result;

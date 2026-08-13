@@ -68,3 +68,11 @@ export function executeTemplateWithParams(data) {
 export function getStreamMessages(params) {
   return request.get(API_URLS.stream.messages, { params })
 }
+
+export function getDataOpList() {
+  return request.get(API_URLS.dataop.list)
+}
+
+export function executeDataOp(data) {
+  return request.post(API_URLS.dataop.execute, data)
+}

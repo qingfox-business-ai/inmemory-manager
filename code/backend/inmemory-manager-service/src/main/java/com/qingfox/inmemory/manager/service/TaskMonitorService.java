@@ -102,11 +102,15 @@ public class TaskMonitorService {
     }
 
     public PageResult<TaskListDTO> getTaskListPageFromTask(String taskId, Short status, String startTime, String endTime, int page, int size) {
+        LocalDateTime startDateTime = (startTime != null && !startTime.isEmpty())
+                ? LocalDate.parse(startTime.trim().substring(0, 10)).atStartOfDay() : null;
+        LocalDateTime endDateTime = (endTime != null && !endTime.isEmpty())
+                ? LocalDate.parse(endTime.trim().substring(0, 10)).atTime(23, 59, 59) : null;
         LambdaQueryWrapper<Task> wrapper = new LambdaQueryWrapper<Task>()
                 .like(taskId != null && !taskId.isEmpty(), Task::getTaskId, taskId)
                 .eq(status != null, Task::getStatus, status)
-                .ge(startTime != null && !startTime.isEmpty(), Task::getStartTime, startTime)
-                .le(endTime != null && !endTime.isEmpty(), Task::getStartTime, endTime)
+                .ge(startDateTime != null, Task::getStartTime, startDateTime)
+                .le(endDateTime != null, Task::getStartTime, endDateTime)
                 .orderByDesc(Task::getStartTime);
         List<Task> tasks = taskMapper.selectList(wrapper);
         List<TaskListDTO> dtos = tasks.stream().map(this::toTaskListDTO).collect(Collectors.toList());

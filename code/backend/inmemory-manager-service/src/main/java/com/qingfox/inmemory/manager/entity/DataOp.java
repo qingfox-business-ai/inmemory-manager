@@ -8,28 +8,17 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName(value = "inmemory_task", schema = "bill")
-public class Task {
+@TableName(value = "inmemory_data_op", schema = "bill")
+public class DataOp {
 
     @TableId(type = IdType.AUTO)
     private Long id;
-    private String taskId;
+    private String opType;
+    private String opParameter;
+    private String opResult;
     private Short status;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private LocalDateTime updateTime;
-    private Long inputCount;
-    private Long outputCount;
-    private String inputId;
-    private String outputId;
-    private String taskMark;
     private String errorStack;
-    private Long batchWait;
-    private Long batchRun;
-    private Long batchDone;
-    private Long batchFailure;
-    private Long queueWait;
-    private Long queueRun;
-    private Long queueDone;
-    private Long queueFailure;
 }

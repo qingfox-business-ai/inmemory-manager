@@ -16,7 +16,7 @@ public class TaskListDTO {
     private Integer status;
     private String errorStack;
     private Long inputCount;
-    private String outputCount;
+    private Long outputCount;
     private String startTime;
     private String endTime;
     private Long batchWait;

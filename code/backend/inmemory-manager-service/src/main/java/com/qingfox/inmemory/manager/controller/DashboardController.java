@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -21,7 +22,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DashboardController {
 
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter FMT_DAY = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private final TaskMapper taskMapper;
     private final RedisStreamService redisStreamService;
@@ -30,11 +30,9 @@ public class DashboardController {
     public ApiResponse<DashboardSummaryDTO> summary() {
         LocalDate today = LocalDate.now();
         LocalDate startDate = today.minusDays(7);
-        String startTime = startDate.atStartOfDay().format(FMT);
-        String endTime = today.atTime(23, 59, 59).format(FMT);
 
         List<Task> tasks = taskMapper.selectList(new LambdaQueryWrapper<Task>()
-                .ge(Task::getStartTime, startTime));
+                .ge(Task::getStartTime, startDate.atStartOfDay()));
         int waiting = 0, running = 0, success = 0, failed = 0;
         if (tasks != null) {
             for (Task t : tasks) {

@@ -117,7 +117,7 @@
         </el-table-column>
         <el-table-column label="数据量(输入/输出)" min-width="140" align="center">
           <template #default="{ row }">
-            <span>{{ row.inputCount != null ? row.inputCount : '-' }} / {{ row.outputCount != null ? row.outputCount : '-' }}</span>
+            <span>{{ formatCount(row.inputCount) }} / {{ formatCount(row.outputCount) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="执行时间" min-width="320">
@@ -332,6 +332,10 @@
     </el-dialog>
 
     <el-dialog v-model="detailDialogVisible" :title="'消息详情 - ' + (currentMessageId || '')" width="650px" append-to-body>
+      <div v-if="currentErrorStack" class="detail-error-section">
+        <div class="detail-error-title">错误信息</div>
+        <pre class="detail-error-content">{{ currentErrorStack }}</pre>
+      </div>
       <el-table :data="attributeTableData" border style="width: 100%" max-height="500">
         <el-table-column prop="key" label="属性" width="180" />
         <el-table-column prop="value" label="值" show-overflow-tooltip />
@@ -503,6 +507,15 @@ const formatDuration = (ms) => {
     : `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
 }
 
+const formatCount = (n) => {
+  if (n == null) return '-'
+  const num = Number(n)
+  if (isNaN(num)) return String(n)
+  if (num >= 100000000) return Math.floor(num / 100000000) + '亿'
+  if (num >= 10000) return Math.floor(num / 10000) + '万'
+  return String(num)
+}
+
 const executeRowClass = ({ row }) => {
   if (row.errorCount > 0) return 'error-row'
   return ''
@@ -579,6 +592,7 @@ const queueList = ref([])
 const queueLoading = ref(false)
 const detailDialogVisible = ref(false)
 const currentMessageId = ref('')
+const currentErrorStack = ref('')
 const currentAttribute = ref(null)
 
 const showBatchDetail = async (row) => {
@@ -615,6 +629,7 @@ const showQueueDetail = async (row) => {
 const showQueueMessageDetail = (row) => {
   currentMessageId.value = row.id
   currentAttribute.value = row.attribute
+  currentErrorStack.value = row.errorStack || ''
   detailDialogVisible.value = true
 }
 
@@ -889,6 +904,27 @@ onBeforeUnmount(() => {
 .stat-chips .el-tag {
   min-width: 26px;
   justify-content: center;
+}
+
+.detail-error-section {
+  margin-bottom: 16px;
+}
+.detail-error-title {
+  font-weight: bold;
+  color: #f56c6c;
+  margin-bottom: 8px;
+}
+.detail-error-content {
+  background: #fef0f0;
+  border: 1px solid #fbc4c4;
+  border-radius: 4px;
+  padding: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 13px;
+  margin: 0;
 }
 
 .error-row {
