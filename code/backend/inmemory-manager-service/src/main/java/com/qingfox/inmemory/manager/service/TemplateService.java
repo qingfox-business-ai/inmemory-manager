@@ -65,7 +65,7 @@ public class TemplateService {
         template.setOutputId(dto.getOutputId());
         template.setCustomData(dto.getCustomData());
         template.setInputData(dto.getInputData());
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = taskBatchMapper.selectDatabaseNow();
         template.setCreateTime(now);
         template.setUpdateTime(now);
         executeTemplateMapper.insert(template);
@@ -83,7 +83,7 @@ public class TemplateService {
         template.setOutputId(dto.getOutputId());
         template.setCustomData(dto.getCustomData());
         template.setInputData(dto.getInputData());
-        template.setUpdateTime(LocalDateTime.now());
+        template.setUpdateTime(taskBatchMapper.selectDatabaseNow());
         executeTemplateMapper.updateById(template);
     }
 
@@ -148,10 +148,9 @@ public class TemplateService {
         task.setTaskMark(templateName);
         task.setStatus(success ? (short) 0 : (short) 3);
         task.setErrorStack(!success ? errorMsg : null);
-        LocalDateTime now = LocalDateTime.now();
         LocalDateTime dbNow = taskBatchMapper.selectDatabaseNow();
         task.setStartTime(dbNow);
-        task.setEndTime(now);
+        task.setEndTime(dbNow);
         task.setUpdateTime(dbNow);
         taskMapper.insert(task);
 

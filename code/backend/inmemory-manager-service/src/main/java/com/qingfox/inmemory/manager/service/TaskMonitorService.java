@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -36,11 +37,17 @@ public class TaskMonitorService {
     private static final int MAX_ERRORS = 50;
 
     private static final java.time.format.DateTimeFormatter FMT = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final java.time.format.DateTimeFormatter FMT_DAY = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public List<TaskDTO> getTaskList(String taskId, String status, String startTime, String endTime) {
-        String effectiveStart = (startTime == null || startTime.isEmpty())
-                ? LocalDateTime.now().minusDays(7).format(FMT) : startTime;
-        List<Map<String, Object>> rows = taskBatchMapper.selectTaskSummary(taskId, effectiveStart, endTime);
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = (startTime != null && !startTime.isEmpty())
+                ? LocalDate.parse(startTime.trim().substring(0, 10)) : today.minusDays(7);
+        LocalDate endDate = (endTime != null && !endTime.isEmpty())
+                ? LocalDate.parse(endTime.trim().substring(0, 10)) : today;
+        String effectiveStart = startDate.atStartOfDay().format(FMT_DAY);
+        String effectiveEnd = endDate.atTime(23, 59, 59).format(FMT_DAY);
+        List<Map<String, Object>> rows = taskBatchMapper.selectTaskSummary(taskId, effectiveStart, effectiveEnd);
         if (rows == null || rows.isEmpty()) {
             return Collections.emptyList();
         }

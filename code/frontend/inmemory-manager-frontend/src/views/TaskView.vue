@@ -15,12 +15,12 @@
             <el-input v-model="taskIdFilter" placeholder="任务ID" style="width: 180px; margin-left: 12px;" clearable />
             <el-date-picker
               v-model="timeRange"
-              type="datetimerange"
+              type="daterange"
               range-separator="~"
-              start-placeholder="开始时间"
-              end-placeholder="结束时间"
-              format="YYYY-MM-DD HH:mm"
-              value-format="YYYY-MM-DD HH:mm"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
               style="margin-left: 12px;"
             />
             <el-button type="primary" :icon="Search" @click="handleSearch" style="margin-left: 12px;">查询</el-button>
@@ -61,20 +61,58 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="批次统计" min-width="300">
+        <el-table-column min-width="150">
+          <template #header>
+            <el-tooltip placement="top">
+              <template #content>
+                <div>🟢 完成　🟡 运行</div>
+                <div>⚪ 等待　🔴 失败</div>
+              </template>
+              <span>批次统计 <el-icon style="vertical-align: middle;"><InfoFilled /></el-icon></span>
+            </el-tooltip>
+          </template>
           <template #default="{ row }">
-            <el-tag size="small" type="info" effect="plain">等待 {{ row.batchWait || 0 }}</el-tag>
-            <el-tag size="small" type="warning" effect="plain" style="margin-left: 4px;">运行 {{ row.batchRun || 0 }}</el-tag>
-            <el-tag size="small" type="success" effect="plain" style="margin-left: 4px;">完成 {{ row.batchDone || 0 }}</el-tag>
-            <el-tag size="small" type="danger" effect="plain" style="margin-left: 4px;">失败 {{ row.batchFailure || 0 }}</el-tag>
+            <span class="stat-chips">
+              <el-tooltip :content="`完成: ${row.batchDone || 0}`" placement="top">
+                <el-tag size="small" type="success" effect="dark">{{ row.batchDone || 0 }}</el-tag>
+              </el-tooltip>
+              <el-tooltip :content="`运行: ${row.batchRun || 0}`" placement="top">
+                <el-tag size="small" type="warning" effect="dark">{{ row.batchRun || 0 }}</el-tag>
+              </el-tooltip>
+              <el-tooltip :content="`等待: ${row.batchWait || 0}`" placement="top">
+                <el-tag size="small" type="info" effect="dark">{{ row.batchWait || 0 }}</el-tag>
+              </el-tooltip>
+              <el-tooltip :content="`失败: ${row.batchFailure || 0}`" placement="top">
+                <el-tag size="small" type="danger" effect="dark">{{ row.batchFailure || 0 }}</el-tag>
+              </el-tooltip>
+            </span>
           </template>
         </el-table-column>
-        <el-table-column label="消息统计" min-width="300">
+        <el-table-column min-width="150">
+          <template #header>
+            <el-tooltip placement="top">
+              <template #content>
+                <div>🟢 完成　🟡 运行</div>
+                <div>⚪ 等待　🔴 失败</div>
+              </template>
+              <span>消息统计 <el-icon style="vertical-align: middle;"><InfoFilled /></el-icon></span>
+            </el-tooltip>
+          </template>
           <template #default="{ row }">
-            <el-tag size="small" type="info" effect="plain">等待 {{ row.queueWait || 0 }}</el-tag>
-            <el-tag size="small" type="warning" effect="plain" style="margin-left: 4px;">运行 {{ row.queueRun || 0 }}</el-tag>
-            <el-tag size="small" type="success" effect="plain" style="margin-left: 4px;">完成 {{ row.queueDone || 0 }}</el-tag>
-            <el-tag size="small" type="danger" effect="plain" style="margin-left: 4px;">失败 {{ row.queueFailure || 0 }}</el-tag>
+            <span class="stat-chips">
+              <el-tooltip :content="`完成: ${row.queueDone || 0}`" placement="top">
+                <el-tag size="small" type="success" effect="dark">{{ row.queueDone || 0 }}</el-tag>
+              </el-tooltip>
+              <el-tooltip :content="`运行: ${row.queueRun || 0}`" placement="top">
+                <el-tag size="small" type="warning" effect="dark">{{ row.queueRun || 0 }}</el-tag>
+              </el-tooltip>
+              <el-tooltip :content="`等待: ${row.queueWait || 0}`" placement="top">
+                <el-tag size="small" type="info" effect="dark">{{ row.queueWait || 0 }}</el-tag>
+              </el-tooltip>
+              <el-tooltip :content="`失败: ${row.queueFailure || 0}`" placement="top">
+                <el-tag size="small" type="danger" effect="dark">{{ row.queueFailure || 0 }}</el-tag>
+              </el-tooltip>
+            </span>
           </template>
         </el-table-column>
         <el-table-column label="数据量(输入/输出)" min-width="140" align="center">
@@ -326,7 +364,7 @@
 
 <script setup>
 import { ref, computed, reactive, onMounted, onBeforeUnmount } from 'vue'
-import { Refresh, Search, CopyDocument, Plus } from '@element-plus/icons-vue'
+import { Refresh, Search, CopyDocument, Plus, InfoFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import JsonEditor from '@/components/JsonEditor.vue'
 import {
@@ -346,7 +384,7 @@ const defaultTimeRange = () => {
   const end = new Date()
   const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000)
   const pad = (n) => String(n).padStart(2, '0')
-  const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
   return [fmt(start), fmt(end)]
 }
 const timeRange = ref(defaultTimeRange())
@@ -841,6 +879,16 @@ onBeforeUnmount(() => {
 
 .status-fail-clickable:hover {
   opacity: 0.8;
+}
+
+.stat-chips {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.stat-chips .el-tag {
+  min-width: 26px;
+  justify-content: center;
 }
 
 .error-row {

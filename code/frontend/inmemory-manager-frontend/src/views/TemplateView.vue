@@ -23,7 +23,7 @@
             <el-button size="small" @click="viewData(row, 'custom')">查看定制数据</el-button>
             <el-button size="small" @click="viewData(row, 'input')">查看输入数据</el-button>
             <el-button size="small" type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button size="small" type="warning" :loading="executingId === row.id" @click="handleExecute(row)">执行</el-button>
+            <el-button size="small" type="warning" @click="openExecDialog(row)">执行</el-button>
             <el-popconfirm title="确认删除该模板？" @confirm="handleDelete(row)">
               <template #reference>
                 <el-button size="small" type="danger">删除</el-button>
@@ -69,6 +69,37 @@
         <el-button type="primary" :loading="submitting" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 执行模板对话框 -->
+    <el-dialog v-model="execDialogVisible" title="执行模板" width="65%" top="5vh" @close="resetExecForm">
+      <el-form :model="execForm" label-width="100px">
+        <el-form-item label="模板名称">
+          <el-input v-model="execForm.templateName" placeholder="请输入模板名称" disabled />
+        </el-form-item>
+        <el-form-item label="解析器ID">
+          <el-input v-model="execForm.resolverId" placeholder="请输入解析器ID" disabled />
+        </el-form-item>
+        <el-form-item label="子解析器ID">
+          <el-input v-model="execForm.subResolverId" placeholder="请输入子解析器ID（逗号分隔）" disabled />
+        </el-form-item>
+        <el-form-item label="输入ID">
+          <el-input v-model="execForm.inputId" placeholder="请输入输入统计ID" disabled />
+        </el-form-item>
+        <el-form-item label="输出ID">
+          <el-input v-model="execForm.outputId" placeholder="请输入输出统计ID" disabled />
+        </el-form-item>
+        <el-form-item label="定制数据">
+          <JsonEditor v-model="execForm.customData" height="200px" />
+        </el-form-item>
+        <el-form-item label="输入数据">
+          <JsonEditor v-model="execForm.inputData" height="200px" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="execDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="execSubmitting" @click="handleExecSubmit">确认执行</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -84,7 +115,7 @@ import {
   addTemplate,
   updateTemplate,
   deleteTemplate,
-  executeTemplate
+  executeTemplateWithParams
 } from '@/api'
 
 const tableData = ref([])
@@ -247,20 +278,60 @@ const handleDelete = async (row) => {
   }
 }
 
-const executingId = ref(null)
-const handleExecute = async (row) => {
-  executingId.value = row.id
+const execDialogVisible = ref(false)
+const execSubmitting = ref(false)
+const defaultExecForm = () => ({
+  templateName: '',
+  resolverId: '',
+  subResolverId: '',
+  inputId: '',
+  outputId: '',
+  customData: '',
+  inputData: ''
+})
+const execForm = reactive(defaultExecForm())
+
+const resetExecForm = () => {
+  Object.assign(execForm, defaultExecForm())
+}
+
+const openExecDialog = async (row) => {
+  Object.assign(execForm, {
+    templateName: row.templateName || '',
+    resolverId: row.resolverId || '',
+    subResolverId: row.subResolverId || '',
+    inputId: row.inputId || '',
+    outputId: row.outputId || '',
+    customData: '',
+    inputData: ''
+  })
+  execDialogVisible.value = true
   try {
-    const res = await executeTemplate(row.id)
+    const [customRes, inputRes] = await Promise.all([
+      getTemplateCustomData(row.id),
+      getTemplateInputData(row.id)
+    ])
+    if (customRes.code === 200) execForm.customData = customRes.data || ''
+    if (inputRes.code === 200) execForm.inputData = inputRes.data || ''
+  } catch (e) {
+    console.error('加载模板数据失败', e)
+  }
+}
+
+const handleExecSubmit = async () => {
+  execSubmitting.value = true
+  try {
+    const res = await executeTemplateWithParams({ ...execForm })
     if (res.code === 200) {
       ElMessage.success('执行成功')
+      execDialogVisible.value = false
     } else {
       ElMessage.error(res.message || '执行失败')
     }
   } catch (e) {
     ElMessage.error('执行失败')
   } finally {
-    executingId.value = null
+    execSubmitting.value = false
   }
 }
 

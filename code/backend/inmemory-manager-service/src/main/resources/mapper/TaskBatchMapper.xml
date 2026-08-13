@@ -36,7 +36,7 @@
     </select>
 
     <select id="selectDatabaseNow" resultType="java.time.LocalDateTime">
-        SELECT now()::timestamp without time zone
+        SELECT now() AT TIME ZONE 'Asia/Shanghai'
     </select>
 
     <select id="selectBatchStatusCountByTaskId" resultType="java.util.Map">

@@ -4,6 +4,8 @@ services:
     image: host.docker.internal:50102/inmemory-manager/inmemory-manager-frontend
     build: .
     container_name: inmemory-manager-inmemory-manager-frontend
+    environment:
+      - BACKEND_UPSTREAM=http://inmemory-manager-inmemory-manager-service-backend:8080
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.inmemory-manager-inmemory-manager-frontend-secure.rule=Host(`host.docker.internal`) && PathPrefix(`/inmemory-manager/inmemory-manager-frontend`)"

@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -21,14 +21,17 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DashboardController {
 
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter FMT_DAY = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private final TaskMapper taskMapper;
     private final RedisStreamService redisStreamService;
 
     @GetMapping("/summary")
     public ApiResponse<DashboardSummaryDTO> summary() {
-        String startTime = LocalDateTime.now().minusDays(7).format(FMT);
-        String endTime = LocalDateTime.now().format(FMT);
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = today.minusDays(7);
+        String startTime = startDate.atStartOfDay().format(FMT);
+        String endTime = today.atTime(23, 59, 59).format(FMT);
 
         List<Task> tasks = taskMapper.selectList(new LambdaQueryWrapper<Task>()
                 .ge(Task::getStartTime, startTime));
@@ -55,7 +58,7 @@ public class DashboardController {
                         .connected(connected).disconnected(disconnected).build())
                 .task(DashboardSummaryDTO.TaskSummary.builder()
                         .success(success).waiting(waiting).running(running).failed(failed)
-                        .periodStart(startTime).periodEnd(endTime).build())
+                        .periodStart(startDate.format(FMT_DAY)).periodEnd(today.format(FMT_DAY)).build())
                 .build();
         return ApiResponse.success(data);
     }
